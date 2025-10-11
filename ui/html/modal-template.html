@@ -1,0 +1,16 @@
+<div id="infoModal" role="dialog" aria-labelledby="modalTitle" class="info-modal">
+  <div class="modal-header">
+    <h4 class="modal-title" id="modalTitle">{{ 'TodoPlugin_view_notes' | spTranslate }}</h4>
+  </div>
+  <div class="modal-body">
+    <div id="modal-content">
+      <div>
+          {{ ctrl.notes }}
+      </div>
+    </div>
+  </div>
+  <div class="modal-footer bg-light lt">
+    <button tabindex="50" ng-click="ctrl.close()" type="button" class="btn btn-info btn-default">{{ 'TodoPlugin_close' | spTranslate}}</button>
+  </div>
+</div>
+

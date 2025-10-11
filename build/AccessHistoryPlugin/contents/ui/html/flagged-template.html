@@ -1,0 +1,32 @@
+<div id="infoModal" role="dialog" aria-labelledby="modalTitle" class="info-modal">
+  <div class="modal-header">
+    <h4 class="modal-title" id="modalTitle">{{ 'TodoPlugin_flagged_users' | spTranslate }}</h4>
+  </div>
+  <div class="modal-body">
+    <div id="modal-content">
+      <table class="table m-t" ng-if="ctrl.flaggedUsers.length > 0">
+        <thead>
+          <tr>
+            <th>{{ 'TodoPlugin_username' | spTranslate }}</th>
+            <th>{{ 'TodoPlugin_num_todos' | spTranslate }}</th>
+            <th>{{ 'TodoPlugin_created' | spTranslate }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr ng-repeat="flaggedUser in ctrl.flaggedUsers">
+            <td>{{ flaggedUser.username }}</td>
+            <td>{{ flaggedUser.numTodos }}</td>
+            <td>{{ flaggedUser.created | date:'short' }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <h3 class="text-muted text-center" ng-if="ctrl.flaggedUsers.length === 0">
+        {{ 'TodoPlugin_no_flagged_users' | spTranslate }}
+      </h3>
+    </div>
+  </div>
+  <div class="modal-footer bg-light lt">
+    <button tabindex="50" ng-click="ctrl.close()" type="button" class="btn btn-info btn-default">{{ 'TodoPlugin_close' | spTranslate }}</button>
+  </div>
+</div>
+
