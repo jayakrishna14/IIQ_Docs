@@ -13,18 +13,6 @@
  import sailpoint.rest.plugin.RequiredRight;
  import sailpoint.tools.GeneralException;
  
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
  @Path("TodoPlugin")
  @Produces({"application/json"})
  @Consumes({"application/json"})
@@ -33,35 +21,18 @@
    extends BasePluginResource
  {
    public String getPluginName() {
-/* 36 */     return "TodoPlugin";
+     return "TodoPlugin";
    }
- 
- 
- 
- 
- 
- 
    
    @GET
    @Path("flaggedUsers")
    public ListResult getFlaggedUsers() throws GeneralException {
-/* 48 */     List<FlaggedUser> flaggedUsers = getFlaggedUserService().getFlaggedUsers();
+     List<FlaggedUser> flaggedUsers = getFlaggedUserService().getFlaggedUsers();
      
-/* 50 */     return new ListResult(flaggedUsers, flaggedUsers.size());
+     return new ListResult(flaggedUsers, flaggedUsers.size());
    }
- 
- 
- 
- 
- 
-   
+  
    private FlaggedUserService getFlaggedUserService() {
-/* 59 */     return new FlaggedUserService((PluginContext)this);
+     return new FlaggedUserService((PluginContext)this);
    }
  }
-
-
-/* Location:              C:\Users\jkp14\Downloads\TodoPlugin-V3.zip!\lib\TodoPlugin.jar!\com\acme\todo\rest\FlaggedUserResource.class
- * Java compiler version: 8 (52.0)
- * JD-Core Version:       1.1.3
- */

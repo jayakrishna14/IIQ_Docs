@@ -33,9 +33,3 @@ public class TodoQuery {
   
   public static final String IS_USER_FLAGGED = "SELECT COUNT(id) AS total FROM tp_flagged_user WHERE user_id=?";
 }
-
-
-/* Location:              C:\Users\jkp14\Downloads\TodoPlugin-V3.zip!\lib\TodoPlugin.jar!\com\acme\tod\\util\TodoQuery.class
- * Java compiler version: 8 (52.0)
- * JD-Core Version:       1.1.3
- */
