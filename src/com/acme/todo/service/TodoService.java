@@ -13,9 +13,12 @@ import sailpoint.tools.GeneralException;
 import sailpoint.tools.IOUtil;
 import sailpoint.tools.ObjectNotFoundException;
 import sailpoint.tools.Util;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 public class TodoService
 {
+  private static final Log LOG = LogFactory.getLog(TodoService.class);
   private static final String SETTING_DEFAULT_NAME = "defaultName";
   private static final String SETTING_DEFAULT_TIME = "defaultTime";
   private PluginContext pluginContext;
@@ -77,6 +80,7 @@ public class TodoService
     PreparedStatement statement = null;
     
     try {
+      LOG.info("getTodosForUser: userId=" + userId);
       connection = this.pluginContext.getConnection();
       
       statement = PluginBaseHelper.prepareStatement(connection, "SELECT * FROM tp_todo_list WHERE user_id=? ORDER BY completed_on ASC, created ASC", new Object[] { userId });
@@ -87,6 +91,7 @@ public class TodoService
         todos.add(todoFromResult(resultSet));
       }
       
+      LOG.info("getTodosForUser: returning " + todos.size() + " todos for userId=" + userId);
       return todos;
     } catch (SQLException e) {
       throw new GeneralException(e);
@@ -124,6 +129,7 @@ public class TodoService
     PreparedStatement statement = null;
     
     try {
+      LOG.info("createTodo: userId=" + data.getUserId() + " name=" + data.getName());
       connection = this.pluginContext.getConnection();
       
       String name = data.getName();
@@ -157,6 +163,7 @@ public class TodoService
     PreparedStatement statement = null;
     
     try {
+      LOG.info("completeTodo: id=" + (todo == null ? "null" : todo.getId()));
       connection = this.pluginContext.getConnection();
       
       statement = PluginBaseHelper.prepareStatement(connection, "UPDATE tp_todo_list SET complete=1, completed_on=? WHERE id=?", new Object[] { Long.valueOf(TodoUtil.now()), todo.getId() });
@@ -191,6 +198,7 @@ public class TodoService
     PreparedStatement statement = null;
     
     try {
+      LOG.info("deleteUserTodos: userId=" + userId);
       connection = this.pluginContext.getConnection();
       
       statement = PluginBaseHelper.prepareStatement(connection, "DELETE FROM tp_todo_list WHERE user_id=?", new Object[] { userId });
@@ -224,12 +232,14 @@ public class TodoService
     Connection connection = null;
     
     try {
+      LOG.info("deleteCompletedTodos: starting");
       connection = this.pluginContext.getConnection();
       
       int numComplete = countCompletedTodos(connection);
       if (numComplete > 0) {
         deleteCompletedTodos(connection);
       }
+      LOG.info("deleteCompletedTodos: deleted=" + numComplete);
       
       return numComplete;
     } catch (SQLException e) {
@@ -244,6 +254,7 @@ public class TodoService
     PreparedStatement statement = null;
     
     try {
+      LOG.info("getUsersWithOpenTodos: querying distinct user ids with open todos");
       List<String> userIds = new ArrayList<>();
       
       connection = this.pluginContext.getConnection();
@@ -253,7 +264,7 @@ public class TodoService
       while (resultSet.next()) {
         userIds.add(resultSet.getString("user_id"));
       }
-      
+      LOG.info("getUsersWithOpenTodos: returning " + userIds.size() + " user ids");
       return userIds;
     } catch (SQLException e) {
       throw new GeneralException(e);
@@ -268,6 +279,7 @@ public class TodoService
     PreparedStatement statement = null;
     
     try {
+      LOG.info("getActiveTodosForUser: userId=" + userId);
       int numActive = 0;
       
       connection = this.pluginContext.getConnection();
@@ -277,7 +289,7 @@ public class TodoService
       if (resultSet.next()) {
         numActive = resultSet.getInt("total");
       }
-      
+      LOG.info("getActiveTodosForUser: userId=" + userId + " active=" + numActive);
       return numActive;
     } catch (SQLException e) {
       throw new GeneralException(e);
@@ -331,10 +343,10 @@ public class TodoService
   }
 
   private String getTodoDefaultName() {
-    return this.pluginContext.getSettingString("defaultName");
+    return this.pluginContext.getSettingString(SETTING_DEFAULT_NAME);
   }
 
   private int getTodoDefaultEstimate() {
-    return this.pluginContext.getSettingInt("defaultTime");
+    return this.pluginContext.getSettingInt(SETTING_DEFAULT_TIME);
   }
 }

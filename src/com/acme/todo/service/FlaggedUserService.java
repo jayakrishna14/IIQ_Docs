@@ -11,9 +11,12 @@ import sailpoint.plugin.PluginBaseHelper;
 import sailpoint.plugin.PluginContext;
 import sailpoint.tools.GeneralException;
 import sailpoint.tools.IOUtil;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 public class FlaggedUserService
 {
+  private static final Log LOG = LogFactory.getLog(FlaggedUserService.class);
   private PluginContext pluginContext;
   
   public static class CreateFlagData
@@ -65,6 +68,7 @@ public class FlaggedUserService
     PreparedStatement statement = null;
     
     try {
+      LOG.info("getFlaggedUsers: querying flagged users table");
       List<FlaggedUser> flaggedUsers = new ArrayList<>();
       
       connection = this.pluginContext.getConnection();
@@ -74,7 +78,7 @@ public class FlaggedUserService
       while (resultSet.next()) {
         flaggedUsers.add(flaggedUserFromResult(resultSet));
       }
-      
+      LOG.info("getFlaggedUsers: returning " + flaggedUsers.size() + " records");
       return flaggedUsers;
     } catch (SQLException e) {
       throw new GeneralException(e);
@@ -89,6 +93,7 @@ public class FlaggedUserService
     PreparedStatement statement = null;
     
     try {
+      LOG.info("getFlaggedUser: id=" + id);
       FlaggedUser flaggedUser = null;
       
       connection = this.pluginContext.getConnection();
@@ -98,7 +103,7 @@ public class FlaggedUserService
       if (resultSet.next()) {
         flaggedUser = flaggedUserFromResult(resultSet);
       }
-      
+      LOG.info("getFlaggedUser: found=" + (flaggedUser != null));
       return flaggedUser;
     } catch (SQLException e) {
       throw new GeneralException(e);
@@ -113,6 +118,7 @@ public class FlaggedUserService
     PreparedStatement statement = null;
     
     try {
+      LOG.info("isUserFlagged: userId=" + userId);
       int count = 0;
       
       connection = this.pluginContext.getConnection();
@@ -122,8 +128,9 @@ public class FlaggedUserService
       if (resultSet.next()) {
         count = resultSet.getInt("total");
       }
-      
-      return (count > 0);
+      boolean flagged = (count > 0);
+      LOG.info("isUserFlagged: userId=" + userId + " flagged=" + flagged);
+      return flagged;
     } catch (SQLException e) {
       throw new GeneralException(e);
     } finally {
@@ -137,6 +144,7 @@ public class FlaggedUserService
     PreparedStatement statement = null;
     
     try {
+      LOG.info("pruneFlaggedUser: id=" + (flaggedUser == null ? "null" : flaggedUser.getId()));
       connection = this.pluginContext.getConnection();
       
       statement = PluginBaseHelper.prepareStatement(connection, "DELETE FROM tp_flagged_user WHERE id=?", new Object[] { flaggedUser.getId() });
@@ -154,6 +162,7 @@ public class FlaggedUserService
     PreparedStatement statement = null;
     
     try {
+      LOG.info("flagUser: userId=" + data.getUserId() + " username=" + data.getUsername() + " numTodos=" + data.getNumTodos());
       connection = this.pluginContext.getConnection();
       
       String id = data.getId();
