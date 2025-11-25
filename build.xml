@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project name="AccessHistoryPlugin" default="package">
+<project name="Eshiam_LCE_Automation" default="package">
   <!-- allow overriding of build properties -->
   <property file="user.build.properties"/>
   <property file="build.properties"/>

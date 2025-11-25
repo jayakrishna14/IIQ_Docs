@@ -12,9 +12,7 @@
       <entry key="restResources">
         <value>
           <List>
-            <String>com.acme.todo.rest.TodoResource</String>
-            <String>com.acme.todo.rest.FlaggedUserResource</String>
-            <String>com.acme.todo.rest.PageConfigResource</String>
+            <String>com.acme.todo.rest.identityRequestResource</String>
           </List>
         </value>
       </entry>
