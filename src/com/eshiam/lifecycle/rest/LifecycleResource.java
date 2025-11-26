@@ -11,7 +11,7 @@ import javax.ws.rs.core.Response;
 
 import sailpoint.api.SailPointContext;
 import sailpoint.object.Rule;
-import sailpoint.object.Identity;
+import sailpoint.object.Workflow;
 import sailpoint.rest.plugin.BasePluginResource;
 import sailpoint.rest.plugin.AllowAll;
 import sailpoint.tools.GeneralException;
@@ -34,43 +34,9 @@ public class LifecycleResource extends BasePluginResource {
     }
 
     // ------------------------------------------------------
-    // GET — MANAGER VALIDATION
-    // ------------------------------------------------------
-    @GET
-    @Path("/iiq/user/{mgrName}")
-    public Response checkIfManagerValid(@PathParam("mgrName") String mgrName) {
-        log.error("### GET /iiq/user called for manager: " + mgrName);
-
-        try {
-            SailPointContext context = getContext();
-            Identity mgr = context.getObjectByName(Identity.class, mgrName);
-
-            boolean valid = (mgr != null && mgr.getManagerStatus());
-
-            log.error("Manager validation result for [" + mgrName + "] = " + valid);
-
-            Map<String, Object> result = new HashMap<>();
-            result.put("manager", mgrName);
-            result.put("validManager", valid);
-
-            return Response.ok(result).build();
-
-        } catch (Exception e) {
-            log.error("Error while validating manager: " + mgrName, e);
-
-            Map<String, Object> err = new HashMap<>();
-            err.put("status", "ERROR");
-            err.put("message", "Failed to validate manager");
-
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(err)
-                    .build();
-        }
-    }
-
-    // ------------------------------------------------------
     // JOINER
     // ------------------------------------------------------
+
     @POST
     @Path("joiner")
     public Response runJoiner(Map<String, Object> inputPayload) throws GeneralException {
@@ -86,7 +52,7 @@ public class LifecycleResource extends BasePluginResource {
 
         LifecycleInput input = mapToLifecycleInput(inputPayload);
         log.error("### JOINER triggered for identity: " + input.getIdentityName());
-        Map<String, Object> result = executeLifecyclePath("Eshiam_LCE_Automation", input, "JOINER");
+        Map<String, Object> result = executeLifecyclePath(getSettingString("joinerRule"), getSettingString("joinerWorkflow"), input, "JOINER");
         return Response.ok(result).build();
     }
 
@@ -108,7 +74,7 @@ public class LifecycleResource extends BasePluginResource {
 
         LifecycleInput input = mapToLifecycleInput(inputPayload);
         log.error("### MOVER triggered for identity: " + input.getIdentityName());
-        Map<String, Object> result = executeLifecyclePath("Eshiam_LCE_Automation", input, "MOVER");
+        Map<String, Object> result = executeLifecyclePath(getSettingString("moverRule"), getSettingString("moverWorkflow"), input, "MOVER");
         return Response.ok(result).build();
     }
 
@@ -130,7 +96,7 @@ public class LifecycleResource extends BasePluginResource {
 
         LifecycleInput input = mapToLifecycleInput(inputPayload);
         log.error("### LEAVER triggered for identity: " + input.getIdentityName());
-        Map<String, Object> result = executeLifecyclePath("Eshiam_LCE_Automation", input, "LEAVER");
+        Map<String, Object> result = executeLifecyclePath(getSettingString("leaverRule"),getSettingString("leaverWorkflow"), input, "LEAVER");
         return Response.ok(result).build();
     }
 
@@ -172,7 +138,7 @@ public class LifecycleResource extends BasePluginResource {
     // RULE EXECUTION (CORE LOGIC)
     // ------------------------------------------------------
     private Map<String, Object> executeLifecyclePath(
-            String ruleName,
+            String ruleName, String workflowName,
             LifecycleInput input,
             String eventType) throws GeneralException {
 
@@ -182,11 +148,19 @@ public class LifecycleResource extends BasePluginResource {
         SailPointContext context = getContext();
 
         try {
+
             Rule rule = context.getObjectByName(Rule.class, ruleName);
 
             if (rule == null) {
                 log.error(prefix + "Rule not found: " + ruleName);
                 throw new GeneralException("Rule not found: " + ruleName);
+            }
+            
+            Workflow workflow = context.getObjectByName(Workflow.class, workflowName);
+
+            if (workflow == null) {
+                log.error(prefix + "Workflow not found: " + workflowName);
+                throw new GeneralException("Workflow not found: " + workflowName);
             }
 
             log.error(prefix + "Executing rule: " + ruleName);
@@ -201,6 +175,7 @@ public class LifecycleResource extends BasePluginResource {
 
             Map<String, Object> args = new HashMap<>();
             args.put("lceInput", lceData);
+            args.put("lceWorkflow", workflowName);
             args.put("eventType", eventType);
             args.put("requestId", Util.uuid());
             args.put("initiator", getLoggedInUser().getName());

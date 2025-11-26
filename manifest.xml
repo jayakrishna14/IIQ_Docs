@@ -27,7 +27,6 @@
                     <List>
                         <!-- Updated to your actual REST class -->
                         <String>com.eshiam.lifecycle.rest.LifecycleResource</String>
-                        <String>com.eshiam.lifecycle.rest.ExamplePluginRestManager</String>
                     </List>
                 </value>
             </entry>
@@ -65,6 +64,25 @@
                             defaultValue="LCE_Leaver_Rule"
                             helpText="Rule executed for Leaver events"/>
 
+                        <Setting
+                            name="joinerWorkflow"
+                            label="Joiner Workflow Name"
+                            dataType="string"
+                            defaultValue="LCE_Joiner_Workflow"
+                            helpText="Workflow executed for Joiner events"/>
+                        <Setting
+                            name="moverWorkflow"
+                            label="Mover Workflow Name"
+                            dataType="string"
+                            defaultValue="LCE_Mover_Workflow"
+                            helpText="Workflow executed for Mover events"/>
+
+                        <Setting
+                            name="leaverWorkflow"
+                            label="Leaver Workflow Name"
+                            dataType="string"
+                            defaultValue="LCE_Leaver_Workflow"
+                            helpText="Workflow executed for Leaver events"/>
                     </List>
                 </value>
             </entry>

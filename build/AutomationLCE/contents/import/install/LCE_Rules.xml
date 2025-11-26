@@ -1,0 +1,96 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE sailpoint PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<sailpoint>
+	<Rule language="beanshell" name="LCE_Joiner_Rule">
+  <Description>
+    No identities are selected by this IdentitySelector rule
+  </Description>
+  <Signature returnType="boolean">
+    <Inputs>
+      <Argument name="context">
+        <Description>
+          A sailpoint.api.SailPointContext.
+        </Description>
+      </Argument>
+      <Argument name="identity">
+        <Description>
+          The identity to evaluate
+        </Description>
+      </Argument>
+    </Inputs>
+  </Signature>
+  <Source>
+
+  log.error("===lceData===="+lceInput);//HashMap
+  log.error("===lceWorkflow===="+lceWorkflow);
+  log.error("===eventType===="+eventType);
+  log.error("===initiator===="+initiator);
+  log.error("===requestId===="+requestId);
+
+  return "Good";
+
+  </Source>
+</Rule>
+
+<Rule language="beanshell" name="LCE_Mover_Rule">
+  <Description>
+    No identities are selected by this IdentitySelector rule
+  </Description>
+  <Signature returnType="boolean">
+    <Inputs>
+      <Argument name="context">
+        <Description>
+          A sailpoint.api.SailPointContext.
+        </Description>
+      </Argument>
+      <Argument name="identity">
+        <Description>
+          The identity to evaluate
+        </Description>
+      </Argument>
+    </Inputs>
+  </Signature>
+  <Source>
+
+  log.error("===lceData===="+lceInput);//HashMap
+  log.error("===lceWorkflow===="+lceWorkflow);
+  log.error("===eventType===="+eventType);
+  log.error("===initiator===="+initiator);
+  log.error("===requestId===="+requestId);
+
+  return "Good";
+
+  </Source>
+</Rule>
+
+<Rule language="beanshell" name="LCE_Leaver_Rule">
+  <Description>
+    No identities are selected by this IdentitySelector rule
+  </Description>
+  <Signature returnType="boolean">
+    <Inputs>
+      <Argument name="context">
+        <Description>
+          A sailpoint.api.SailPointContext.
+        </Description>
+      </Argument>
+      <Argument name="identity">
+        <Description>
+          The identity to evaluate
+        </Description>
+      </Argument>
+    </Inputs>
+  </Signature>
+  <Source>
+
+  log.error("===lceData===="+lceInput);//HashMap
+  log.error("===lceWorkflow===="+lceWorkflow);
+  log.error("===eventType===="+eventType);
+  log.error("===initiator===="+initiator);
+  log.error("===requestId===="+requestId);
+
+  return "Good";
+
+  </Source>
+</Rule>
+</sailpoint>

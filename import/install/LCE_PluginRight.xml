@@ -1,17 +1,17 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!DOCTYPE sailpoint PUBLIC "sailpoint.dtd" "sailpoint.dtd">
 <sailpoint>
-	<SPRight name="examplePluginRight"
-		displayName="Example Plugin Admin">
+	<SPRight name="LCE_PluginRight"
+		displayName="LCE Plugin Admin">
 		<Description>Allows a user to access plugin setting.</Description>
 	</SPRight>
 
-	<Capability name="ExamplePluginAdministrator"
-		displayName="Example Plugin Administrator">
-		<Description>Example Plugin Administrator</Description>
+	<Capability name="LCE_PluginAdministrator"
+		displayName="LCE Plugin Administrator">
+		<Description>LCE Plugin Administrator</Description>
 		<RightRefs>
 			<Reference class="sailpoint.object.SPRight"
-				name="examplePluginRight" />
+				name="LCE_PluginRight" />
 		</RightRefs>
 	</Capability>
 </sailpoint>
