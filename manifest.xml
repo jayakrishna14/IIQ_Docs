@@ -2,11 +2,11 @@
 <!DOCTYPE Plugin PUBLIC "sailpoint.dtd" "sailpoint.dtd">
 
 <Plugin
-    name="Eshiam_LCE_Automation"
-    displayName="Eshiam LCE Automation"
-    version="1.0"
+    name="AutomationLCE"
+    displayName="Automation LCE"
+    version="1.0.0"
     certificationLevel="None"
-    minSystemVersion="8.1">
+    minSystemVersion="8.3">
 
     <Attributes>
         <Map>
@@ -27,11 +27,18 @@
                     <List>
                         <!-- Updated to your actual REST class -->
                         <String>com.eshiam.lifecycle.rest.LifecycleResource</String>
+                        <String>com.eshiam.lifecycle.rest.ExamplePluginRestManager</String>
                     </List>
                 </value>
             </entry>
 
-           
+			<entry key="scriptPackages">
+				<value>
+					<List>
+						<String>com.eshiam.lifecycle.rest</String>
+					</List>
+				</value>
+			</entry>
 
             <!-- Plugin-level settings visible in UI -->
             <entry key="settings">

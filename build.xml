@@ -1,62 +1,100 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project name="Eshiam_LCE_Automation" default="package">
-  <!-- allow overriding of build properties -->
-  <property file="user.build.properties"/>
-  <property file="build.properties"/>
-  <property name="buildPlugins" location="build"/>
+<project name="AutomationLCE" default="package">
 
-  <target name="clean">
-        <echo message="Starting clean target"/>
-        <delete dir="${buildPlugins}"/>
+    <description>
+        Example Plugin
+    </description>
+
+    <!-- Project Structure -->
+    <property file="build.properties" />
+    <property name="buildPlugins" location="build" />
+
+    <property name="pluginBase" location="." />
+    <property name="pluginSrc" location="${pluginBase}/src" />
+    <property name="pluginTest" location="${pluginBase}/test" />
+
+    <property name="pluginBuild" location="${buildPlugins}/${pluginName}" />
+    <property name="pluginLib" location="${pluginBuild}/lib" />
+    <property name="pluginClasses" location="${pluginBuild}/classes" />
+    <property name="pluginContents" location="${pluginBuild}/contents" />
+    <property name="pluginConfig" location="${pluginBuild}/config" />
+    <property name="pluginTestBuild" location="${pluginBuild}/test" />
+
+    <!-- Project Packaging -->
+    <target name="package" depends="setup">
+
+        <echo message="Starting build process..." />
+
+        <echo message="Compiling jar..." />
+        <mkdir dir="${pluginLib}" />
+
+        <jar destfile="${pluginLib}/${pluginName}.jar">
+            <fileset dir="${pluginClasses}">
+                <include name="**/*" />
+            </fileset>
+        </jar>
+
+        <echo message="Copying files..." />
+        <mkdir dir="${pluginContents}" />
+
+        <copy todir="${pluginContents}">
+            <!-- Only files needed for the plugin runtime -->
+            <fileset dir="${pluginBase}">
+                <include name="manifest.xml" />
+                <include name="db/**" />
+                <include name="import/**" />
+                <include name="ui/**" />
+            </fileset>
+
+            <!-- Only include the compiled plugin JAR -->
+            <fileset dir="${pluginBuild}">
+                <include name="lib/${pluginName}.jar" />
+            </fileset>
+        </copy>
+
+        <echo message="Zipping final build..." />
+        <zip encoding="UTF-8" baseDir="${pluginContents}" 
+             destfile="${pluginBuild}/dist/${pluginName}.${version}.zip" />
     </target>
 
+    <!-- Classpath for compilation -->
+    <path id="classpath.test">
+        <pathelement location="${pluginClasses}" />
+        <pathelement path="${iiq.home}/WEB-INF/classes" />
+        <fileset dir="${iiq.home}/WEB-INF/lib">
+            <include name="**/*.jar" />
+        </fileset>
+        <!-- External libs: ONLY used for compilation, NOT packaged -->
+        <fileset dir="${pluginBase}/lib">
+            <include name="**/*.jar" />
+        </fileset>
+    </path>
 
+    <!-- Setup -->
+    <target name="setup">
+        <echo message="Compiling classes..." />
+        <mkdir dir="${pluginClasses}" />
 
-  <target name="package">
-      <property name="pluginBase" location="." />
-      <property name="pluginSrc" location="${pluginBase}/src" />
-      <property name="pluginBuild" location="${buildPlugins}/${pluginName}" />
-      <property name="pluginLib" location="${pluginBuild}/lib" />
-      <property name="pluginClasses" location="${pluginBuild}/classes" />
-      <property name="pluginContents" location="${pluginBuild}/contents" />
+        <javac srcdir="${pluginSrc}" destdir="${pluginClasses}" 
+               includeantruntime="false" target="11">
+            <classpath>
+                <pathelement path="${iiq.home}/WEB-INF/classes" />
+                <fileset dir="${iiq.home}/WEB-INF/lib">
+                    <include name="**/*.jar" />
+                </fileset>
+                <!-- compile-time only libraries -->
+                <fileset dir="${pluginBase}/lib">
+                    <include name="**/*.jar" />
+                </fileset>
+            </classpath>
+            <compilerarg value="-Xlint:deprecation" />
+            <compilerarg value="-Xlint:unchecked" />
+        </javac>
+    </target>
 
-      <mkdir dir="${pluginClasses}" />
+    <target name="clean">
+        <echo message="Cleaning target..." />
+        <delete dir="${buildPlugins}" />
+    </target>
 
-      <javac srcdir="${pluginSrc}" destdir="${pluginClasses}"
-                 includeantruntime="false" target="1.7">
-
-          <classpath>
-            <pathelement path="${iiq.home}/WEB-INF/classes"/>
-            <fileset dir="${iiq.home}/WEB-INF/lib">
-            <include name="**/*.jar"/>
-            </fileset>
-          </classpath>
-
-          <compilerarg value="-Xlint:deprecation" />
-          <compilerarg value="-Xlint:unchecked" />
-      </javac>
-
-      <mkdir dir="${pluginLib}" />
-      <jar destfile="${pluginLib}/${pluginName}.jar">
-          <fileset dir="${pluginClasses}">
-            <include name="**/*" />
-          </fileset>
-      </jar>
-
-      <mkdir dir="${pluginContents}" />
-      <copy todir="${pluginContents}">
-          <fileset dir="${pluginBase}">
-              <include name="manifest.xml" />
-              <include name="db/**" />
-              <include name="import/**" />
-              <include name="lib/*.jar" />
-              <include name="ui/**" />
-          </fileset>
-          <fileset dir="${pluginBuild}">
-            <include name="lib/*.jar" />
-          </fileset>
-      </copy>
-      <zip encoding="UTF-8" baseDir="${pluginContents}" destfile="${pluginBuild}/dist/${pluginName}.${version}.zip">
-      </zip>
-  </target>
 </project>
