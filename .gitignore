@@ -10,3 +10,7 @@ build/AutomationLCE/contents/lib/AutomationLCE.jar
 build/AutomationLCE/dist/AutomationLCE.1.0.0.zip
 build/AutomationLCE/lib/AutomationLCE.jar
 Notes-INF.txt
+build/AutomationLCE/classes/com/eshiam/lifecycle/model/Access.class
+build/AutomationLCE/classes/com/eshiam/lifecycle/model/ApplicationAccess.class
+build/AutomationLCE/classes/com/eshiam/lifecycle/model/LifecycleInput.class
+build/AutomationLCE/classes/com/eshiam/lifecycle/model/LifecycleInput.class

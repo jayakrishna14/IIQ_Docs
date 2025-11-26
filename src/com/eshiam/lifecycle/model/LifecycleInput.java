@@ -1,15 +1,28 @@
 package com.eshiam.lifecycle.model;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class LifecycleInput {
 
+    private String eventType;
     private String identityName;
     private String firstName;
     private String lastName;
     private String department;
     private String email;
+    private List<ApplicationAccess> applications = new ArrayList<>();
 
     public LifecycleInput() {
         // MUST EXIST
+    }
+
+    public String getEventType() {
+        return eventType;
+    }
+
+    public void setEventType(String eventType) {
+        this.eventType = eventType;
     }
 
     public String getIdentityName() {
@@ -45,5 +58,13 @@ public class LifecycleInput {
     }
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public List<ApplicationAccess> getApplications() {
+        return applications;
+    }
+
+    public void setApplications(List<ApplicationAccess> applications) {
+        this.applications = applications;
     }
 }
