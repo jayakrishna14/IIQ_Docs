@@ -28,6 +28,7 @@ public class LifecycleInput {
     public String getIdentityName() {
         return identityName;
     }
+
     public void setIdentityName(String identityName) {
         this.identityName = identityName;
     }
@@ -35,6 +36,7 @@ public class LifecycleInput {
     public String getFirstName() {
         return firstName;
     }
+
     public void setFirstName(String firstName) {
         this.firstName = firstName;
     }
@@ -42,6 +44,7 @@ public class LifecycleInput {
     public String getLastName() {
         return lastName;
     }
+
     public void setLastName(String lastName) {
         this.lastName = lastName;
     }
@@ -49,6 +52,7 @@ public class LifecycleInput {
     public String getDepartment() {
         return department;
     }
+
     public void setDepartment(String department) {
         this.department = department;
     }
@@ -56,6 +60,7 @@ public class LifecycleInput {
     public String getEmail() {
         return email;
     }
+
     public void setEmail(String email) {
         this.email = email;
     }

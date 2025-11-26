@@ -14,3 +14,17 @@ build/AutomationLCE/classes/com/eshiam/lifecycle/model/Access.class
 build/AutomationLCE/classes/com/eshiam/lifecycle/model/ApplicationAccess.class
 build/AutomationLCE/classes/com/eshiam/lifecycle/model/LifecycleInput.class
 build/AutomationLCE/classes/com/eshiam/lifecycle/model/LifecycleInput.class
+build/AutomationLCE/contents/import/install/LCE_Workflows.xml
+build/AutomationLCE/contents/import/install/LCE_PluginRight.xml
+build/AutomationLCE/contents/import/install/LCE_Rules.xml
+build/AutomationLCE/classes/com/eshiam/lifecycle/rest/LifecycleInputBodyReader.class
+build/AutomationLCE/classes/com/eshiam/lifecycle/utils/LifecycleUtils.class
+build/AutomationLCE/classes/com/eshiam/lifecycle/utils/LifecycleUtils$1.class
+src/test/java/com/eshiam/lifecycle/utils/LifecycleUtilsTest.txt
+build/AutomationLCE/classes/com/eshiam/lifecycle/model/BatchResponse.class
+.gitignore
+build/AutomationLCE/classes/com/eshiam/lifecycle/model/BatchResult.class
+build/AutomationLCE/classes/com/eshiam/lifecycle/model/BatchStatus.class
+build/AutomationLCE/classes/com/eshiam/lifecycle/model/ErrorCode.class
+build/AutomationLCE/classes/com/eshiam/lifecycle/utils/LceExecutionException.class
+build/AutomationLCE/classes/com/eshiam/lifecycle/utils/LifecycleUtils$2.class

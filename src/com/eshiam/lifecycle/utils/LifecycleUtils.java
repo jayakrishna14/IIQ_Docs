@@ -1,0 +1,400 @@
+package com.eshiam.lifecycle.utils;
+
+import com.eshiam.lifecycle.model.LifecycleInput;
+import com.eshiam.lifecycle.model.ApplicationAccess;
+import com.eshiam.lifecycle.model.Access;
+import com.eshiam.lifecycle.model.BatchResult;
+import com.eshiam.lifecycle.model.BatchResponse;
+import com.eshiam.lifecycle.model.BatchStatus;
+import com.eshiam.lifecycle.model.ErrorCode;
+
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import sailpoint.api.SailPointContext;
+import sailpoint.object.Rule;
+import sailpoint.object.Workflow;
+import sailpoint.tools.GeneralException;
+import sailpoint.tools.Util;
+
+import org.glassfish.jersey.server.ResourceConfig;
+
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.lang.reflect.Type;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public final class LifecycleUtils {
+
+    private static final Log log = LogFactory.getLog(LifecycleUtils.class);
+    private static final Gson gson = new Gson();
+
+    private LifecycleUtils() {}
+
+    // ---------------------------------------------------------------------
+    // Rule + Workflow Selection Logic
+    // ---------------------------------------------------------------------
+    public static String ruleForEvent(String eventType,
+                                      String joinerRule,
+                                      String moverRule,
+                                      String leaverRule) {
+        if (eventType == null)
+            return joinerRule;
+
+        switch (eventType.toUpperCase()) {
+            case "MOVER": return moverRule;
+            case "LEAVER": return leaverRule;
+            default: return joinerRule;
+        }
+    }
+
+    public static String workflowForEvent(String eventType,
+                                          String joinerWf,
+                                          String moverWf,
+                                          String leaverWf) {
+        if (eventType == null)
+            return joinerWf;
+
+        switch (eventType.toUpperCase()) {
+            case "MOVER": return moverWf;
+            case "LEAVER": return leaverWf;
+            default: return joinerWf;
+        }
+    }
+
+    // ---------------------------------------------------------------------
+    // Execute Rule + Workflow
+    // ---------------------------------------------------------------------
+    public static Map<String,Object> executeLifecyclePath(
+            SailPointContext context,
+            String ruleName,
+            String workflowName,
+            LifecycleInput input,
+            String eventType,
+            String initiator,
+            String requestId) throws GeneralException {
+
+        String prefix = "### LCE EXECUTION [" + eventType + "] — ";
+
+        Rule rule = context.getObjectByName(Rule.class, ruleName);
+        if (rule == null) {
+            throw new LceExecutionException(ErrorCode.RULE_NOT_FOUND,
+                    "Rule not found: " + ruleName);
+        }
+
+        Workflow wf = context.getObjectByName(Workflow.class, workflowName);
+        if (wf == null) {
+            throw new LceExecutionException(ErrorCode.WORKFLOW_NOT_FOUND,
+                    "Workflow not found: " + workflowName);
+        }
+
+        Map<String,Object> lceData = new HashMap<>();
+        lceData.put("identityName", input.getIdentityName());
+        lceData.put("firstName", input.getFirstName());
+        lceData.put("lastName", input.getLastName());
+        lceData.put("department", input.getDepartment());
+        lceData.put("email", input.getEmail());
+
+        if (input.getApplications() != null) {
+            List<Map<String,Object>> apps = new ArrayList<>();
+            for (ApplicationAccess aa : input.getApplications()) {
+                Map<String,Object> appMap = new HashMap<>();
+                appMap.put("name", aa.getName());
+                appMap.put("operation", aa.getOperation());
+
+                Map<String,Object> access = new HashMap<>();
+                if (aa.getAccess() != null) {
+                    access.put("add", aa.getAccess().getAdd());
+                    access.put("remove", aa.getAccess().getRemove());
+                }
+                appMap.put("access", access);
+
+                apps.add(appMap);
+            }
+            lceData.put("applications", apps);
+        }
+
+        Map<String,Object> args = new HashMap<>();
+        args.put("lceInput", lceData);
+        args.put("lceWorkflow", workflowName);
+        args.put("eventType", eventType);
+        args.put("initiator", initiator);
+        args.put("requestId", requestId != null ? requestId : Util.uuid());
+
+        Object result = context.runRule(rule, args);
+
+        Map<String,Object> response = new HashMap<>();
+        response.put("eventType", eventType);
+        response.put("rule", ruleName);
+        response.put("workflow", workflowName);
+        response.put("requestId", requestId);
+        response.put("initiator", initiator);
+        response.put("result", result);
+        response.put("status", "SUCCESS");
+
+        return response;
+    }
+
+    // ---------------------------------------------------------------------
+    // Convert Map → LifecycleInput
+    // ---------------------------------------------------------------------
+    public static LifecycleInput mapToLifecycleInput(Map<String,Object> inputPayload) {
+        LifecycleInput input = new LifecycleInput();
+        if (inputPayload == null) return input;
+
+        Map<String,Object> payload = inputPayload;
+
+        if (payload.get("lceInput") instanceof Map) {
+            payload = (Map<String,Object>) payload.get("lceInput");
+        }
+
+        if (payload.get("eventType") != null)
+            input.setEventType(payload.get("eventType").toString());
+
+        if (payload.get("identityName") != null)
+            input.setIdentityName(payload.get("identityName").toString());
+
+        if (payload.get("firstName") != null)
+            input.setFirstName(payload.get("firstName").toString());
+
+        if (payload.get("lastName") != null)
+            input.setLastName(payload.get("lastName").toString());
+
+        if (payload.get("department") != null)
+            input.setDepartment(payload.get("department").toString());
+
+        if (payload.get("email") != null)
+            input.setEmail(payload.get("email").toString());
+
+        Object apps = payload.get("applications");
+        if (apps instanceof List) {
+            List<ApplicationAccess> appList = new ArrayList<>();
+            for (Object o : (List<?>) apps) {
+                if (!(o instanceof Map)) continue;
+
+                Map<String,Object> appMap = (Map<String,Object>) o;
+                ApplicationAccess aa = new ApplicationAccess();
+
+                if (appMap.get("name") != null)
+                    aa.setName(appMap.get("name").toString());
+
+                if (appMap.get("operation") != null)
+                    aa.setOperation(appMap.get("operation").toString());
+
+                if (appMap.get("access") instanceof Map) {
+                    Map<String,Object> accMap = (Map<String,Object>) appMap.get("access");
+                    Access a = new Access();
+
+                    if (accMap.get("add") instanceof List) {
+                        for (Object add : (List<?>) accMap.get("add"))
+                            a.getAdd().add(add.toString());
+                    }
+                    if (accMap.get("remove") instanceof List) {
+                        for (Object rm : (List<?>) accMap.get("remove"))
+                            a.getRemove().add(rm.toString());
+                    }
+
+                    aa.setAccess(a);
+                }
+
+                appList.add(aa);
+            }
+            input.setApplications(appList);
+        }
+
+        return input;
+    }
+
+    // ---------------------------------------------------------------------
+    // Validate LifecycleInput
+    // ---------------------------------------------------------------------
+    public static List<String> validateLifecycleInput(LifecycleInput input) {
+        List<String> errors = new ArrayList<>();
+
+        if (input == null) {
+            errors.add("input is null");
+            return errors;
+        }
+        if (input.getIdentityName() == null || input.getIdentityName().trim().isEmpty())
+            errors.add("identityName is required");
+
+        if (input.getEventType() != null) {
+            String et = input.getEventType().toUpperCase();
+            if (!et.equals("JOINER") && !et.equals("MOVER") && !et.equals("LEAVER"))
+                errors.add("eventType must be JOINER, MOVER, or LEAVER");
+        }
+
+        if (input.getEmail() != null &&
+            !input.getEmail().matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
+            errors.add("email is invalid");
+        }
+
+        return errors;
+    }
+
+    // ---------------------------------------------------------------------
+    // Batch Processing (FULLY FIXED)
+    // ---------------------------------------------------------------------
+    public static BatchResponse processBatch(
+            List<?> batch,
+            SailPointContext context,
+            String joinerRule,
+            String joinerWorkflow,
+            String moverRule,
+            String moverWorkflow,
+            String leaverRule,
+            String leaverWorkflow,
+            String initiator,
+            String batchRequestId) {
+
+        BatchResponse response = new BatchResponse();
+        List<BatchResult> results = new ArrayList<>();
+
+        if (batch == null || batch.isEmpty()) {
+            response.setStatus("EMPTY_BATCH");
+            response.setResults(results);
+            return response;
+        }
+
+        log.info("Processing batch items=" + batch.size() + " batchId=" + batchRequestId);
+
+        Type mapType = new TypeToken<Map<String,Object>>(){}.getType();
+
+        int index = 0;
+        for (Object entry : batch) {
+            log.debug("Batch item[" + index++ + "] class=" +
+                    (entry != null ? entry.getClass().getName() : "null") +
+                    " value=" + entry);
+
+            Map<String,Object> row = null;
+
+            try {
+
+                // Case 1: real Map
+                if (entry instanceof Map) {
+                    row = (Map<String,Object>) entry;
+                }
+
+                // Case 2: JSON string
+                else if (entry instanceof String) {
+                    String raw = ((String) entry).trim();
+
+                    // Try real JSON first
+                    try {
+                        row = gson.fromJson(raw, mapType);
+                    } catch (Exception ignored) {}
+
+                    // IIQ flattened ={ } format
+                    if (row == null || row.isEmpty()) {
+                        String converted = raw
+                                .replace("{", "{\"")
+                                .replace("}", "\"}")
+                                .replace("=", "\":\"")
+                                .replace(", ", "\", \"");
+
+                        row = gson.fromJson(converted, mapType);
+                    }
+                }
+
+                // Case 3: fallback → toString → try JSON parse
+                else if (entry != null) {
+                    String raw = entry.toString();
+                    try {
+                        row = gson.fromJson(raw, mapType);
+                    } catch (Exception ex) {
+                        throw new RuntimeException(
+                                "Unsupported batch item type: " +
+                                entry.getClass().getName(), ex);
+                    }
+                }
+
+                if (row == null) {
+                    throw new RuntimeException("Unable to parse batch entry; null after parsing");
+                }
+
+            } catch (Exception ex) {
+                log.error("Batch parse failure: " + entry, ex);
+
+                BatchResult br = new BatchResult();
+                br.setStatus(BatchStatus.FAILED);
+                br.setErrorCode(ErrorCode.EXECUTION_ERROR);
+                br.setErrors(List.of("Invalid batch item: " + ex.getMessage()));
+                results.add(br);
+
+                continue;
+            }
+
+            // Execute processing
+            try {
+                LifecycleInput li = mapToLifecycleInput(row);
+                List<String> validation = validateLifecycleInput(li);
+
+                if (!validation.isEmpty()) {
+                    BatchResult br = new BatchResult();
+                    br.setIdentityName(li.getIdentityName());
+                    br.setEventType(li.getEventType());
+                    br.setStatus(BatchStatus.FAILED_VALIDATION);
+                    br.setErrors(validation);
+                    br.setErrorCode(ErrorCode.VALIDATION_ERROR);
+                    results.add(br);
+                    continue;
+                }
+
+                String eventType = li.getEventType() != null ? li.getEventType() : "JOINER";
+
+                String rule = ruleForEvent(eventType, joinerRule, moverRule, leaverRule);
+                String workflow = workflowForEvent(eventType, joinerWorkflow, moverWorkflow, leaverWorkflow);
+                String requestId = Util.uuid();
+
+                Map<String,Object> exec = executeLifecyclePath(
+                        context, rule, workflow, li, eventType, initiator, requestId);
+
+                BatchResult br = new BatchResult();
+                br.setIdentityName(li.getIdentityName());
+                br.setEventType(eventType);
+                br.setStatus(BatchStatus.SUCCESS);
+                br.setWorkflow(workflow);
+                br.setRule(rule);
+                br.setRequestId(requestId);
+
+                if (exec.get("result") instanceof Map) {
+                    br.setResult((Map<String,Object>) exec.get("result"));
+                }
+
+                results.add(br);
+
+            } catch (Exception e) {
+                log.error("Batch item failed for batchId=" + batchRequestId, e);
+
+                BatchResult br = new BatchResult();
+                br.setStatus(BatchStatus.FAILED);
+                br.setErrors(List.of(e.getMessage()));
+                br.setErrorCode(ErrorCode.EXECUTION_ERROR);
+                results.add(br);
+            }
+        }
+
+        response.setStatus("BATCH_COMPLETE");
+        response.setResults(results);
+        return response;
+    }
+
+    // ---------------------------------------------------------------------
+    // JSON Helpers
+    // ---------------------------------------------------------------------
+    public static Map<String,Object> jsonStreamToMap(InputStream is) {
+        return gson.fromJson(new InputStreamReader(is),
+                             new TypeToken<Map<String,Object>>(){}.getType());
+    }
+
+    public static void registerProviders(ResourceConfig rc) {
+        rc.register(com.eshiam.lifecycle.rest.LifecycleInputBodyReader.class);
+    }
+}
