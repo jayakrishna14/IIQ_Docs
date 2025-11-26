@@ -1,2 +1,11 @@
 
 bfg-1.15.0.jar
+lib/*.jar
+build/AutomationLCE/classes/com/eshiam/lifecycle/rest/ExamplePluginRestManager.class
+build/AutomationLCE/classes/com/eshiam/lifecycle/rest/LifecycleResource.class
+build/AutomationLCE/classes/com/eshiam/lifecycle/utils/Utils.class
+build/AutomationLCE/contents/manifest.xml
+build/AutomationLCE/contents/import/install/examplePluginRight.xml
+build/AutomationLCE/contents/lib/AutomationLCE.jar
+build/AutomationLCE/dist/AutomationLCE.1.0.0.zip
+build/AutomationLCE/lib/AutomationLCE.jar
