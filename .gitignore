@@ -1,32 +1,12 @@
-### IntelliJ IDEA ###
-out/
-!**/src/main/**/out/
-!**/src/test/**/out/
-
-### Eclipse ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-bin/
-!**/src/main/**/bin/
-!**/src/test/**/bin/
-
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-
-### VS Code ###
-.vscode/
-
-### Mac OS ###
-.DS_Store
-
-##Plugin files###
-build/build.zip
+build/AutomationLCE/classes/com/eshiam/lifecycle/rest/ExamplePluginRestManager.class
+build/AutomationLCE/classes/com/eshiam/lifecycle/rest/LifecycleResource.class
+build/AutomationLCE/contents/manifest.xml
+build/AutomationLCE/contents/lib/AutomationLCE.jar
+build/AutomationLCE/dist/AutomationLCE.1.0.0.zip
+build/AutomationLCE/lib/AutomationLCE.jar
+.gitignore
+build/AutomationLCE/contents/manifest.xml
+build/AutomationLCE/contents/lib/AutomationLCE.jar
+build/AutomationLCE/classes/com/eshiam/lifecycle/rest/ExamplePluginRestManager.class
+build/AutomationLCE/classes/com/eshiam/lifecycle/rest/LifecycleResource.class
+build.zip

@@ -77,6 +77,7 @@ public class LifecycleResource extends BasePluginResource {
     // ==============================
     @POST
     @Path("joiner")
+    @Produces({ "text/plain" })
     @AllowAll
     public Map<String, Object> runJoiner(Map<String, Object> json) throws GeneralException {
         return executeLifecyclePath("Eshiam_LCE_Automation", json, "JOINER");
@@ -87,6 +88,7 @@ public class LifecycleResource extends BasePluginResource {
     // ==============================
     @POST
     @Path("mover")
+    @Produces({ "text/plain" })
     @AllowAll
     public Map<String, Object> runMover(Map<String, Object> json) throws GeneralException {
         return executeLifecyclePath("Eshiam_LCE_Automation", json, "MOVER");
@@ -97,6 +99,7 @@ public class LifecycleResource extends BasePluginResource {
     // ==============================
     @POST
     @Path("leaver")
+    @Produces({ "text/plain" })
     @AllowAll
     public Map<String, Object> runLeaver(Map<String, Object> json) throws GeneralException {
         return executeLifecyclePath("Eshiam_LCE_Automation", json, "LEAVER");

@@ -44,6 +44,7 @@ public class ExamplePluginRestManager extends BasePluginResource {
 
 	
 	@GET
+    @Produces({ "text/plain" })
 	@Path("getExample")
 	public Response getExample() throws GeneralException, SQLException {
 		
@@ -64,6 +65,7 @@ public class ExamplePluginRestManager extends BasePluginResource {
 	}
 	
 	@POST
+    @Produces({ "text/plain" })
 	@Path("postExample")
 	public Response postExample(Map<String, Object> request) throws GeneralException, SQLException, ParseException {
 		log.error("Entering postExample...");
