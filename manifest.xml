@@ -1,41 +1,75 @@
-<?xml version='1.0' encoding='UTF-8'?>
+<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Plugin PUBLIC "sailpoint.dtd" "sailpoint.dtd">
-<Plugin certificationLevel="None" displayName="TodoPlugin_display_name" minSystemVersion="8.1" name="TodoPlugin" version="1.0">
-  <Attributes>
-    <Map>
-      <entry key="minUpgradableVersion" value="1.0" />
-      <entry key="fullPage">
-        <value>
-          <FullPage title="Todo List" />
-        </value>
-      </entry>
-      <entry key="restResources">
-        <value>
-          <List>
-            <String>com.acme.todo.rest.TodoResource</String>
-            <String>com.acme.todo.rest.FlaggedUserResource</String>
-            <String>com.acme.todo.rest.PageConfigResource</String>
-          </List>
-        </value>
-      </entry>
-      <entry key="serviceExecutors">
-        <value>
-          <List>
-            <String>com.acme.todo.server.TodoFlaggingService</String>
-          </List>
-        </value>
-      </entry>
-      <entry key="settings">
-        <value>
-          <List>
-            <Setting dataType="boolean" helpText="TodoPlugin_setting_delete_allowed_help_text" label="TodoPlugin_setting_delete_allowed_label" name="canDelete" defaultValue="true"/>
-            <Setting dataType="string" helpText="TodoPlugin_setting_default_name_help_text" label="TodoPlugin_setting_default_name_label" name="defaultName" defaultValue="My Todo"/>
-            <Setting dataType="int" helpText="TodoPlugin_setting_default_time_help_text" label="TodoPlugin_setting_default_time_label" name="defaultTime" defaultValue="30"/>
-            <Setting dataType="int" helpText="TodoPlugin_setting_max_active_help_text" label="TodoPlugin_setting_max_active_label" name="maxUntilFlagged" defaultValue="10"/>
-          </List>
-        </value>
-      </entry>
-    </Map>
-  </Attributes>
-</Plugin>
 
+<Plugin
+    name="AutomationLCE"
+    displayName="Automation LCE"
+    version="1.0.0"
+    certificationLevel="None"
+    minSystemVersion="8.3">
+
+    <Attributes>
+        <Map>
+
+            <!-- Minimum upgradeable version -->
+            <entry key="minUpgradableVersion" value="1.0" />
+
+            <!-- Optional full-page definition (can remove if no UI page exists) -->
+            <entry key="fullPage">
+                <value>
+                    <FullPage title="Lifecycle Automation" />
+                </value>
+            </entry>
+
+            <!-- REST Resource list -->
+            <entry key="restResources">
+                <value>
+                    <List>
+                        <!-- Updated to your actual REST class -->
+                        <String>com.eshiam.lifecycle.rest.LifecycleResource</String>
+                        <String>com.eshiam.lifecycle.rest.ExamplePluginRestManager</String>
+                    </List>
+                </value>
+            </entry>
+
+			<entry key="scriptPackages">
+				<value>
+					<List>
+						<String>com.eshiam.lifecycle.rest</String>
+					</List>
+				</value>
+			</entry>
+
+            <!-- Plugin-level settings visible in UI -->
+            <entry key="settings">
+                <value>
+                    <List>
+                        <Setting
+                            name="joinerRule"
+                            label="Joiner Rule Name"
+                            dataType="string"
+                            defaultValue="LCE_Joiner_Rule"
+                            helpText="Rule executed for Joiner events"/>
+
+                        <Setting
+                            name="moverRule"
+                            label="Mover Rule Name"
+                            dataType="string"
+                            defaultValue="LCE_Mover_Rule"
+                            helpText="Rule executed for Mover events"/>
+
+                        <Setting
+                            name="leaverRule"
+                            label="Leaver Rule Name"
+                            dataType="string"
+                            defaultValue="LCE_Leaver_Rule"
+                            helpText="Rule executed for Leaver events"/>
+
+                    </List>
+                </value>
+            </entry>
+
+        </Map>
+    </Attributes>
+
+</Plugin>
