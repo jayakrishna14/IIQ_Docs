@@ -1,7 +1,5 @@
 package com.eshiam.lifecycle.model;
 
-import java.util.Map;
-
 public class BatchResult {
     private String identityName;
     private String eventType;
@@ -9,7 +7,7 @@ public class BatchResult {
     private String requestId;
     private String rule;
     private String workflow;
-    private Map<String, Object> result;
+    private Object result;
     private java.util.List<String> errors;
     private ErrorCode errorCode = ErrorCode.NONE;
 
@@ -64,11 +62,11 @@ public class BatchResult {
         this.workflow = workflow;
     }
 
-    public Map<String, Object> getResult() {
+    public Object getResult() {
         return result;
     }
 
-    public void setResult(Map<String, Object> result) {
+    public void setResult(Object result) {
         this.result = result;
     }
 

@@ -20,7 +20,7 @@ import java.util.Map;
 import java.util.List;
 
 @Path("AutomationLCE")
-@Consumes({MediaType.APPLICATION_JSON, MediaType.WILDCARD})
+@Consumes({ MediaType.APPLICATION_JSON, MediaType.WILDCARD })
 @Produces(MediaType.APPLICATION_JSON)
 @AllowAll
 public class LifecycleResource extends BasePluginResource {

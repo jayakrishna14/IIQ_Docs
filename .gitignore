@@ -28,3 +28,7 @@ build/AutomationLCE/classes/com/eshiam/lifecycle/model/BatchStatus.class
 build/AutomationLCE/classes/com/eshiam/lifecycle/model/ErrorCode.class
 build/AutomationLCE/classes/com/eshiam/lifecycle/utils/LceExecutionException.class
 build/AutomationLCE/classes/com/eshiam/lifecycle/utils/LifecycleUtils$2.class
+src/com/eshiam/lifecycle/utils/test.java
+build/AutomationLCE/classes/com/eshiam/lifecycle/utils/LifecycleUtils$3.class
+build/AutomationLCE/classes/com/eshiam/lifecycle/utils/test.class
+build/AutomationLCE/classes/test/java/com/eshiam/lifecycle/utils/LifecycleUtilsTest.class
