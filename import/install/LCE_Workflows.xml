@@ -2,51 +2,16 @@
 <!DOCTYPE sailpoint PUBLIC "sailpoint.dtd" "sailpoint.dtd">
 <sailpoint>
 
-
-
+<!DOCTYPE Workflow PUBLIC "sailpoint.dtd" "sailpoint.dtd">
 <Workflow explicitTransitions="true" libraries="Identity" name="LCE_Joiner_Workflow" type="IdentityLifecycle">
-  <Variable input="true" name="trigger">
-    <Description>The IdentityTrigger</Description>
-  </Variable>
-  <Variable input="true" name="event">
-    <Description>The IdentityChangeEvent</Description>
-  </Variable>
-  <Variable input="true" name="identityName">
-    <Description>The name of the identity.</Description>
-  </Variable>
-  <Variable initializer="Task" input="true" name="source">
-    <Description>
-      String version of sailpoint.object.Source to indicate  where the request originated.  Defaults to LCM.
-    </Description>
-  </Variable>
   <Variable name="plan"/>
   <Variable name="flow"/>
   <Variable name="project"/>
-  <Variable initializer="script:(identityDisplayName != void) ? identityDisplayName : resolveDisplayName(identityName)" input="true" name="identityDisplayName">
-    <Description>
-      The displayName of the identity being updated.Query for this using a projection query and fall back to the name.
-    </Description>
-  </Variable>
-  <Variable initializer="true" name="optimisticProvisioning"/>
-  <Variable initializer="false" name="doRefresh"/>
   <Variable initializer="false" name="trace"/>
   <Variable name="accountExists"/>
   <Variable name="approvalSet"/>
   <Variable name="emailArgs"/>
   <Variable name="emailArgList"/>
-  <Variable initializer="spadmin" name="fallbackApprover"/>
-  <Variable initializer="user,requester" input="true" name="notificationScheme">
-  </Variable>
-  <Variable initializer="LCM User Notification" input="true" name="userEmailTemplate">
-
-  </Variable>
-  <Variable initializer="LCM Requester Notification" input="true" name="requesterEmailTemplate"></Variable>
-  <Variable initializer="LCM Manager Notification" input="true" name="managerEmailTemplate"></Variable>
-  <Variable input="true" name="securityOfficerEmailTemplate"></Variable>
-  <RuleLibraries>
-    <Reference class="sailpoint.object.Rule" name="LCM Workflow Library"/>
-    <Reference class="sailpoint.object.Rule" name="Approval Library"/>
-  </RuleLibraries>
   <Step icon="Start" name="Start">
     <Transition to="Process user"/>
   </Step>
@@ -54,232 +19,61 @@
     <Description>Process the user that joined.</Description>
     <Script>
       <Source>
-		System.out.println("Processing user: " + identityName);
+        System.out.println("Processing user: " + identityName);
       </Source>
     </Script>
     <Transition to="Build Plan"/>
   </Step>
-  <Step icon="Task" name="Build Plan" posX="162" posY="64" resultVariable="plan" wait="1">
+  <Step icon="Task" name="Build Plan" posX="162" posY="64" resultVariable="plan">
     <Script>
       <Source>
 
-         import sailpoint.object.ProvisioningPlan;
-
-         import sailpoint.object.ProvisioningPlan.AccountRequest;
-
-         import sailpoint.object.ProvisioningPlan.AttributeRequest;
-
-         import java.util.List;
-
-         import java.util.ArrayList;
-
-         import sailpoint.object.Application;
-
-         import sailpoint.object.Link;
-
-         ProvisioningPlan plan = new ProvisioningPlan();
-
-         System.out.println("name........."+identityName);
-
-   
-
-         Identity identityObject = context.getObjectByName(Identity.class, identityName);
-
-         System.out.println("obj..............."+identityObject);
-
-    
-
-         List accountRequests = new ArrayList();
-
-         AccountRequest accountRequest = new AccountRequest();
-
-         accountRequest.setOperation(AccountRequest.Operation.Create);
-
-         accountRequest.setApplication("Active Directory");
-
-    
-
-         Link link = identityObject.getLink(context.getObjectByName(Application.class, "HR Feed"));
-
-         String EmpPop = link.getAttribute("EmpPopulationType");
-
-         String Loc = link.getAttribute("LocationID");
-
-         String Comp = link.getAttribute("COmpCode");
-
-         String Auth = link.getAttribute("AuthSource");
-
-            
-
-         System.out.println("POpulation: " +EmpPop);
-
-         System.out.println("COMP:..." +Comp);
-
-         System.out.println("LOC......:" +Loc);
-
-         String DN =xxxxxx;
-
-         String GDN = xxxxxx;
-
-         System.out.println("DN:...." +DN);                                
-
-         accountRequest.add(new AttributeRequest("givenName",event.getObject().getFirstname()));
-
-         accountRequest.add(new AttributeRequest("sn",event.getObject().getLastname()));
-
-         accountRequest.add(new AttributeRequest("distinguishedName",DN));
-
-         accountRequest.add(new AttributeRequest("sAMAccountName",identityName));
-
-         accountRequest.add(new AttributeRequest("primaryGroupDN",GDN));
-
-         accountRequest.add(new AttributeRequest("mail",identityObject.getEmail()));
-
-     
-
-         accountRequest.setNativeIdentity(DN);
-
-         accountRequests.add(accountRequest);
-
-         plan.setAccountRequests(accountRequests);
-
-         plan.setIdentity(identityObject);
+        System.out.println("Beanshell namespace:");
 
 
-         System.out.println("givenName"+event.getObject().getFirstname());
 
-         System.out.println("DN:...." +DN);
+        for (int i=0; i&lt; this.variables.length; i++){
 
-         System.out.println("obj..............."+identityObject);
+        String name = this.variables[i];
 
-         System.out.println("View PLAN " + plan.toXml());
+        if ("transient".equals(name)) { continue; }
 
-         return plan;
+        Object value = eval(name);
+
+
+
+        if (value == void)
+
+        print("\n"+name + " = void");
+
+        else if (value == null)
+
+        print(name + " = null");
+
+        else
+
+        print ("\n"+name + ":" + value.getClass().getSimpleName() + " = " + value);
+
+        }
+
+
+
+        System.out.println("obj..............."+identityObject);
+
+        System.out.println("View PLAN " + plan);
+        if(null!=plan)print(plan.toXml());
+        return plan;
 
       </Source>
     </Script>
-    <Transition to="Initialize"/>
+    <Transition to="end"/>
   </Step>
   <Step icon="Task" name="Initialize" posX="266" posY="9">
-    <Arg name="formTemplate" value="Identity Update"/>
-    <Arg name="enableRetryRequest" value="ref:enableRetryRequest"/>
-    <Arg name="allowRequestsWithViolations" value="ref:allowRequestsWithViolations"/>
-    <Arg name="endOnManualWorkItems"/>
-    <Arg name="policiesToCheck" value="ref:policiesToCheck"/>
-    <Arg name="project"/>
-    <Arg name="workItemComments"/>
-    <Arg name="identityRequestId"/>
-    <Arg name="source" value="ref:source"/>
-    <Arg name="identityDisplayName" value="ref:identityDisplayName"/>
-    <Arg name="requireViolationReviewComments" value="ref:requireViolationReviewComments"/>
-    <Arg name="identityRequest"/>
-    <Arg name="trace" value="ref:trace"/>
-    <Arg name="endOnProvisioningForms"/>
     <Arg name="plan" value="ref:plan"/>
     <Arg name="flow" value="ref:flow"/>
     <Arg name="identityName" value="ref:identityName"/>
-    <Arg name="approvalSet"/>
-    <Arg name="policyViolations"/>
-    <Arg name="violationReviewDecision"/>
-    <Arg name="policyScheme" value="ref:policyScheme"/>
-    <Arg name="priority" value="ref:workItemPriority"/>
-    <Arg name="asyncCacheRefresh"/>
-    <Arg name="optimisticProvisioning" value="ref:optimisticProvisioning"/>
-    <Arg name="launcher" value="ref:launcher"/>
-    <Return name="project" to="project"/>
-    <Return name="approvalSet" to="approvalSet"/>
-    <Return name="policyViolations" to="policyViolations"/>
-    <Return name="identityRequestId" to="identityRequestId"/>
-    <Return name="violationReviewDecision" to="violationReviewDecision"/>
-    <Return merge="true" name="workItemComments" to="workItemComments"/>
     <WorkflowRef>
-      <Reference class="sailpoint.object.Workflow" name="Identity Request Initialize"/>
-    </WorkflowRef>
-    <Transition to="end">
-      <Script>
-        <Source>
-		<![CDATA[("cancel".equals(violationReviewDecision) || ((size(policyViolations) > 0 ) && (policyScheme.equals("fail"))))]]></Source>
-      </Script>
-    </Transition>
-    <Transition to="View Project"/>
-  </Step>
-  <Step name="View Project" posX="229" posY="131">
-    <Script>
-      <Source>
-
-        System.out.println("View project: " + project.toXml());
-
-      </Source>
-    </Script>
-    <Transition to="Provision"/>
-  </Step>
-  <Step icon="Task" name="Provision" posX="426" posY="141">
-    <Arg name="formTemplate" value="Identity Update"/>
-    <Arg name="approvalScheme"/>
-    <Arg name="identityName" value="ref:identityName"/>
-    <Arg name="fallbackApprover" value="ref:fallbackApprover"/>
-    <Arg name="approvalSet" value="ref:approvalSet"/>
-    <Arg name="manualActionsEmailTemplate" value="Pending Manual Change"/>
-    <Arg name="workItemComments" value="ref:workItemComments"/>
-    <Arg name="project" value="ref:project"/>
-    <Arg name="policyViolations" value="ref:policyViolations"/>
-    <Arg name="identityRequestId"/>
-    <Arg name="priority"/>
-    <Arg name="policyScheme" value="ref:policyScheme"/>
-    <Arg name="splitProvisioning"/>
-    <Arg name="foregroundProvisioning" value="ref:foregroundProvisioning"/>
-    <Arg name="identityDisplayName" value="ref:identityDisplayName"/>
-    <Arg name="trace" value="ref:trace"/>
-    <Arg name="recompile"/>
-    <Arg name="optimisticProvisioning" value="ref:optimisticProvisioning"/>
-    <Arg name="plan"/>
-    <Arg name="flow" value="ref:flow"/>
-    <Arg name="launcher" value="ref:launcher"/>
-    <Return name="project" to="project"/>
-    <WorkflowRef>
-      <Reference class="sailpoint.object.Workflow" name="Identity Request Provision"/>
-    </WorkflowRef>
-    <Transition to="Refresh" when="ref:doRefresh"/>
-  </Step>
-  <Step action="call:refreshIdentity" icon="Default" name="Refresh" posX="587" posY="138">
-    <Arg name="identityName" value="ref:identityName"/>
-    <Transition to="Finalize"/>
-  </Step>
-  <Step catches="complete" icon="Task" name="Finalize" posX="726" posY="137">
-    <Arg name="trace" value="ref:trace"/>
-    <Arg name="autoVerifyIdentityRequest"/>
-    <Arg name="approvalSet" value="ref:approvalSet"/>
-    <Arg name="ticketManagementApplication"/>
-    <Arg name="project" value="ref:project"/>
-    <Arg name="identityRequestId"/>
-    <Arg name="priority"/>
-    <Arg name="ticketDataGenerationRule"/>
-    <WorkflowRef>
-      <Reference class="sailpoint.object.Workflow" name="Identity Request Finalize"/>
-    </WorkflowRef>
-    <Transition to="Send Post Notifications"/>
-  </Step>
-  <Step icon="Task" name="Send Post Notifications" posX="884" posY="129">
-    <Arg name="approvalScheme"/>
-    <Arg name="identityName" value="ref:identityName"/>
-    <Arg name="notificationScheme" value="ref:notificationScheme"/>
-    <Arg name="userEmailTemplate" value="ref:userEmailTemplate"/>
-    <Arg name="approvalSet"/>
-    <Arg name="policyViolations"/>
-    <Arg name="project" value="ref:project"/>
-    <Arg name="source" value="ref:source"/>
-    <Arg name="priority"/>
-    <Arg name="identityDisplayName" value="ref:identityDisplayName"/>
-    <Arg name="trace" value="ref:trace"/>
-    <Arg name="requesterEmailTemplate" value="ref:requesterEmailTemplate"/>
-    <Arg name="securityOfficerName"/>
-    <Arg name="securityOfficerEmailTemplate"/>
-    <Arg name="plan"/>
-    <Arg name="flow"/>
-    <Arg name="managerEmailTemplate" value="ref:managerEmailTemplate"/>
-    <Arg name="launcher" value="ref:launcher"/>
-    <WorkflowRef>
-      <Reference class="sailpoint.object.Workflow" name="Identity Request Notify"/>
+      <Reference class="sailpoint.object.Workflow" id="" name="LCM Provisioning"/>
     </WorkflowRef>
     <Transition to="end"/>
   </Step>
@@ -288,49 +82,16 @@
 
 
 
+
 <Workflow explicitTransitions="true" libraries="Identity" name="LCE_Mover_Workflow" type="IdentityLifecycle">
-  <Variable input="true" name="trigger">
-    <Description>The IdentityTrigger</Description>
-  </Variable>
-  <Variable input="true" name="event">
-    <Description>The IdentityChangeEvent</Description>
-  </Variable>
-  <Variable input="true" name="identityName">
-    <Description>The name of the identity.</Description>
-  </Variable>
-  <Variable initializer="Task" input="true" name="source">
-    <Description>
-      String version of sailpoint.object.Source to indicate  where the request originated.  Defaults to LCM.
-    </Description>
-  </Variable>
-  <Variable name="plan"/>
+ <Variable name="plan"/>
   <Variable name="flow"/>
   <Variable name="project"/>
-  <Variable initializer="script:(identityDisplayName != void) ? identityDisplayName : resolveDisplayName(identityName)" input="true" name="identityDisplayName">
-    <Description>
-      The displayName of the identity being updated.Query for this using a projection query and fall back to the name.
-    </Description>
-  </Variable>
-  <Variable initializer="true" name="optimisticProvisioning"/>
-  <Variable initializer="false" name="doRefresh"/>
   <Variable initializer="false" name="trace"/>
   <Variable name="accountExists"/>
   <Variable name="approvalSet"/>
   <Variable name="emailArgs"/>
   <Variable name="emailArgList"/>
-  <Variable initializer="spadmin" name="fallbackApprover"/>
-  <Variable initializer="user,requester" input="true" name="notificationScheme">
-  </Variable>
-  <Variable initializer="LCM User Notification" input="true" name="userEmailTemplate">
-
-  </Variable>
-  <Variable initializer="LCM Requester Notification" input="true" name="requesterEmailTemplate"></Variable>
-  <Variable initializer="LCM Manager Notification" input="true" name="managerEmailTemplate"></Variable>
-  <Variable input="true" name="securityOfficerEmailTemplate"></Variable>
-  <RuleLibraries>
-    <Reference class="sailpoint.object.Rule" name="LCM Workflow Library"/>
-    <Reference class="sailpoint.object.Rule" name="Approval Library"/>
-  </RuleLibraries>
   <Step icon="Start" name="Start">
     <Transition to="Process user"/>
   </Step>
@@ -338,232 +99,61 @@
     <Description>Process the user that joined.</Description>
     <Script>
       <Source>
-		System.out.println("Processing user: " + identityName);
+        System.out.println("Processing user: " + identityName);
       </Source>
     </Script>
     <Transition to="Build Plan"/>
   </Step>
-  <Step icon="Task" name="Build Plan" posX="162" posY="64" resultVariable="plan" wait="1">
+  <Step icon="Task" name="Build Plan" posX="162" posY="64" resultVariable="plan">
     <Script>
       <Source>
 
-         import sailpoint.object.ProvisioningPlan;
-
-         import sailpoint.object.ProvisioningPlan.AccountRequest;
-
-         import sailpoint.object.ProvisioningPlan.AttributeRequest;
-
-         import java.util.List;
-
-         import java.util.ArrayList;
-
-         import sailpoint.object.Application;
-
-         import sailpoint.object.Link;
-
-         ProvisioningPlan plan = new ProvisioningPlan();
-
-         System.out.println("name........."+identityName);
-
-   
-
-         Identity identityObject = context.getObjectByName(Identity.class, identityName);
-
-         System.out.println("obj..............."+identityObject);
-
-    
-
-         List accountRequests = new ArrayList();
-
-         AccountRequest accountRequest = new AccountRequest();
-
-         accountRequest.setOperation(AccountRequest.Operation.Create);
-
-         accountRequest.setApplication("Active Directory");
-
-    
-
-         Link link = identityObject.getLink(context.getObjectByName(Application.class, "HR Feed"));
-
-         String EmpPop = link.getAttribute("EmpPopulationType");
-
-         String Loc = link.getAttribute("LocationID");
-
-         String Comp = link.getAttribute("COmpCode");
-
-         String Auth = link.getAttribute("AuthSource");
-
-            
-
-         System.out.println("POpulation: " +EmpPop);
-
-         System.out.println("COMP:..." +Comp);
-
-         System.out.println("LOC......:" +Loc);
-
-         String DN =xxxxxx;
-
-         String GDN = xxxxxx;
-
-         System.out.println("DN:...." +DN);                                
-
-         accountRequest.add(new AttributeRequest("givenName",event.getObject().getFirstname()));
-
-         accountRequest.add(new AttributeRequest("sn",event.getObject().getLastname()));
-
-         accountRequest.add(new AttributeRequest("distinguishedName",DN));
-
-         accountRequest.add(new AttributeRequest("sAMAccountName",identityName));
-
-         accountRequest.add(new AttributeRequest("primaryGroupDN",GDN));
-
-         accountRequest.add(new AttributeRequest("mail",identityObject.getEmail()));
-
-     
-
-         accountRequest.setNativeIdentity(DN);
-
-         accountRequests.add(accountRequest);
-
-         plan.setAccountRequests(accountRequests);
-
-         plan.setIdentity(identityObject);
+        System.out.println("Beanshell namespace:");
 
 
-         System.out.println("givenName"+event.getObject().getFirstname());
 
-         System.out.println("DN:...." +DN);
+        for (int i=0; i&lt; this.variables.length; i++){
 
-         System.out.println("obj..............."+identityObject);
+        String name = this.variables[i];
 
-         System.out.println("View PLAN " + plan.toXml());
+        if ("transient".equals(name)) { continue; }
 
-         return plan;
+        Object value = eval(name);
+
+
+
+        if (value == void)
+
+        print("\n"+name + " = void");
+
+        else if (value == null)
+
+        print(name + " = null");
+
+        else
+
+        print ("\n"+name + ":" + value.getClass().getSimpleName() + " = " + value);
+
+        }
+
+
+
+        System.out.println("obj..............."+identityObject);
+
+        System.out.println("View PLAN " + plan);
+        if(null!=plan)print(plan.toXml());
+        return plan;
 
       </Source>
     </Script>
-    <Transition to="Initialize"/>
+    <Transition to="end"/>
   </Step>
   <Step icon="Task" name="Initialize" posX="266" posY="9">
-    <Arg name="formTemplate" value="Identity Update"/>
-    <Arg name="enableRetryRequest" value="ref:enableRetryRequest"/>
-    <Arg name="allowRequestsWithViolations" value="ref:allowRequestsWithViolations"/>
-    <Arg name="endOnManualWorkItems"/>
-    <Arg name="policiesToCheck" value="ref:policiesToCheck"/>
-    <Arg name="project"/>
-    <Arg name="workItemComments"/>
-    <Arg name="identityRequestId"/>
-    <Arg name="source" value="ref:source"/>
-    <Arg name="identityDisplayName" value="ref:identityDisplayName"/>
-    <Arg name="requireViolationReviewComments" value="ref:requireViolationReviewComments"/>
-    <Arg name="identityRequest"/>
-    <Arg name="trace" value="ref:trace"/>
-    <Arg name="endOnProvisioningForms"/>
     <Arg name="plan" value="ref:plan"/>
     <Arg name="flow" value="ref:flow"/>
     <Arg name="identityName" value="ref:identityName"/>
-    <Arg name="approvalSet"/>
-    <Arg name="policyViolations"/>
-    <Arg name="violationReviewDecision"/>
-    <Arg name="policyScheme" value="ref:policyScheme"/>
-    <Arg name="priority" value="ref:workItemPriority"/>
-    <Arg name="asyncCacheRefresh"/>
-    <Arg name="optimisticProvisioning" value="ref:optimisticProvisioning"/>
-    <Arg name="launcher" value="ref:launcher"/>
-    <Return name="project" to="project"/>
-    <Return name="approvalSet" to="approvalSet"/>
-    <Return name="policyViolations" to="policyViolations"/>
-    <Return name="identityRequestId" to="identityRequestId"/>
-    <Return name="violationReviewDecision" to="violationReviewDecision"/>
-    <Return merge="true" name="workItemComments" to="workItemComments"/>
     <WorkflowRef>
-      <Reference class="sailpoint.object.Workflow" name="Identity Request Initialize"/>
-    </WorkflowRef>
-    <Transition to="end">
-      <Script>
-        <Source>
-		<![CDATA[("cancel".equals(violationReviewDecision) || ((size(policyViolations) > 0 ) && (policyScheme.equals("fail"))))]]></Source>
-      </Script>
-    </Transition>
-    <Transition to="View Project"/>
-  </Step>
-  <Step name="View Project" posX="229" posY="131">
-    <Script>
-      <Source>
-
-        System.out.println("View project: " + project.toXml());
-
-      </Source>
-    </Script>
-    <Transition to="Provision"/>
-  </Step>
-  <Step icon="Task" name="Provision" posX="426" posY="141">
-    <Arg name="formTemplate" value="Identity Update"/>
-    <Arg name="approvalScheme"/>
-    <Arg name="identityName" value="ref:identityName"/>
-    <Arg name="fallbackApprover" value="ref:fallbackApprover"/>
-    <Arg name="approvalSet" value="ref:approvalSet"/>
-    <Arg name="manualActionsEmailTemplate" value="Pending Manual Change"/>
-    <Arg name="workItemComments" value="ref:workItemComments"/>
-    <Arg name="project" value="ref:project"/>
-    <Arg name="policyViolations" value="ref:policyViolations"/>
-    <Arg name="identityRequestId"/>
-    <Arg name="priority"/>
-    <Arg name="policyScheme" value="ref:policyScheme"/>
-    <Arg name="splitProvisioning"/>
-    <Arg name="foregroundProvisioning" value="ref:foregroundProvisioning"/>
-    <Arg name="identityDisplayName" value="ref:identityDisplayName"/>
-    <Arg name="trace" value="ref:trace"/>
-    <Arg name="recompile"/>
-    <Arg name="optimisticProvisioning" value="ref:optimisticProvisioning"/>
-    <Arg name="plan"/>
-    <Arg name="flow" value="ref:flow"/>
-    <Arg name="launcher" value="ref:launcher"/>
-    <Return name="project" to="project"/>
-    <WorkflowRef>
-      <Reference class="sailpoint.object.Workflow" name="Identity Request Provision"/>
-    </WorkflowRef>
-    <Transition to="Refresh" when="ref:doRefresh"/>
-  </Step>
-  <Step action="call:refreshIdentity" icon="Default" name="Refresh" posX="587" posY="138">
-    <Arg name="identityName" value="ref:identityName"/>
-    <Transition to="Finalize"/>
-  </Step>
-  <Step catches="complete" icon="Task" name="Finalize" posX="726" posY="137">
-    <Arg name="trace" value="ref:trace"/>
-    <Arg name="autoVerifyIdentityRequest"/>
-    <Arg name="approvalSet" value="ref:approvalSet"/>
-    <Arg name="ticketManagementApplication"/>
-    <Arg name="project" value="ref:project"/>
-    <Arg name="identityRequestId"/>
-    <Arg name="priority"/>
-    <Arg name="ticketDataGenerationRule"/>
-    <WorkflowRef>
-      <Reference class="sailpoint.object.Workflow" name="Identity Request Finalize"/>
-    </WorkflowRef>
-    <Transition to="Send Post Notifications"/>
-  </Step>
-  <Step icon="Task" name="Send Post Notifications" posX="884" posY="129">
-    <Arg name="approvalScheme"/>
-    <Arg name="identityName" value="ref:identityName"/>
-    <Arg name="notificationScheme" value="ref:notificationScheme"/>
-    <Arg name="userEmailTemplate" value="ref:userEmailTemplate"/>
-    <Arg name="approvalSet"/>
-    <Arg name="policyViolations"/>
-    <Arg name="project" value="ref:project"/>
-    <Arg name="source" value="ref:source"/>
-    <Arg name="priority"/>
-    <Arg name="identityDisplayName" value="ref:identityDisplayName"/>
-    <Arg name="trace" value="ref:trace"/>
-    <Arg name="requesterEmailTemplate" value="ref:requesterEmailTemplate"/>
-    <Arg name="securityOfficerName"/>
-    <Arg name="securityOfficerEmailTemplate"/>
-    <Arg name="plan"/>
-    <Arg name="flow"/>
-    <Arg name="managerEmailTemplate" value="ref:managerEmailTemplate"/>
-    <Arg name="launcher" value="ref:launcher"/>
-    <WorkflowRef>
-      <Reference class="sailpoint.object.Workflow" name="Identity Request Notify"/>
+      <Reference class="sailpoint.object.Workflow" id="" name="LCM Provisioning"/>
     </WorkflowRef>
     <Transition to="end"/>
   </Step>
@@ -573,48 +163,14 @@
 
 
 <Workflow explicitTransitions="true" libraries="Identity" name="LCE_Leaver_Workflow" type="IdentityLifecycle">
-  <Variable input="true" name="trigger">
-    <Description>The IdentityTrigger</Description>
-  </Variable>
-  <Variable input="true" name="event">
-    <Description>The IdentityChangeEvent</Description>
-  </Variable>
-  <Variable input="true" name="identityName">
-    <Description>The name of the identity.</Description>
-  </Variable>
-  <Variable initializer="Task" input="true" name="source">
-    <Description>
-      String version of sailpoint.object.Source to indicate  where the request originated.  Defaults to LCM.
-    </Description>
-  </Variable>
-  <Variable name="plan"/>
+<Variable name="plan"/>
   <Variable name="flow"/>
   <Variable name="project"/>
-  <Variable initializer="script:(identityDisplayName != void) ? identityDisplayName : resolveDisplayName(identityName)" input="true" name="identityDisplayName">
-    <Description>
-      The displayName of the identity being updated.Query for this using a projection query and fall back to the name.
-    </Description>
-  </Variable>
-  <Variable initializer="true" name="optimisticProvisioning"/>
-  <Variable initializer="false" name="doRefresh"/>
   <Variable initializer="false" name="trace"/>
   <Variable name="accountExists"/>
   <Variable name="approvalSet"/>
   <Variable name="emailArgs"/>
   <Variable name="emailArgList"/>
-  <Variable initializer="spadmin" name="fallbackApprover"/>
-  <Variable initializer="user,requester" input="true" name="notificationScheme">
-  </Variable>
-  <Variable initializer="LCM User Notification" input="true" name="userEmailTemplate">
-
-  </Variable>
-  <Variable initializer="LCM Requester Notification" input="true" name="requesterEmailTemplate"></Variable>
-  <Variable initializer="LCM Manager Notification" input="true" name="managerEmailTemplate"></Variable>
-  <Variable input="true" name="securityOfficerEmailTemplate"></Variable>
-  <RuleLibraries>
-    <Reference class="sailpoint.object.Rule" name="LCM Workflow Library"/>
-    <Reference class="sailpoint.object.Rule" name="Approval Library"/>
-  </RuleLibraries>
   <Step icon="Start" name="Start">
     <Transition to="Process user"/>
   </Step>
@@ -622,232 +178,61 @@
     <Description>Process the user that joined.</Description>
     <Script>
       <Source>
-		System.out.println("Processing user: " + identityName);
+        System.out.println("Processing user: " + identityName);
       </Source>
     </Script>
     <Transition to="Build Plan"/>
   </Step>
-  <Step icon="Task" name="Build Plan" posX="162" posY="64" resultVariable="plan" wait="1">
+  <Step icon="Task" name="Build Plan" posX="162" posY="64" resultVariable="plan">
     <Script>
       <Source>
 
-         import sailpoint.object.ProvisioningPlan;
-
-         import sailpoint.object.ProvisioningPlan.AccountRequest;
-
-         import sailpoint.object.ProvisioningPlan.AttributeRequest;
-
-         import java.util.List;
-
-         import java.util.ArrayList;
-
-         import sailpoint.object.Application;
-
-         import sailpoint.object.Link;
-
-         ProvisioningPlan plan = new ProvisioningPlan();
-
-         System.out.println("name........."+identityName);
-
-   
-
-         Identity identityObject = context.getObjectByName(Identity.class, identityName);
-
-         System.out.println("obj..............."+identityObject);
-
-    
-
-         List accountRequests = new ArrayList();
-
-         AccountRequest accountRequest = new AccountRequest();
-
-         accountRequest.setOperation(AccountRequest.Operation.Create);
-
-         accountRequest.setApplication("Active Directory");
-
-    
-
-         Link link = identityObject.getLink(context.getObjectByName(Application.class, "HR Feed"));
-
-         String EmpPop = link.getAttribute("EmpPopulationType");
-
-         String Loc = link.getAttribute("LocationID");
-
-         String Comp = link.getAttribute("COmpCode");
-
-         String Auth = link.getAttribute("AuthSource");
-
-            
-
-         System.out.println("POpulation: " +EmpPop);
-
-         System.out.println("COMP:..." +Comp);
-
-         System.out.println("LOC......:" +Loc);
-
-         String DN =xxxxxx;
-
-         String GDN = xxxxxx;
-
-         System.out.println("DN:...." +DN);                                
-
-         accountRequest.add(new AttributeRequest("givenName",event.getObject().getFirstname()));
-
-         accountRequest.add(new AttributeRequest("sn",event.getObject().getLastname()));
-
-         accountRequest.add(new AttributeRequest("distinguishedName",DN));
-
-         accountRequest.add(new AttributeRequest("sAMAccountName",identityName));
-
-         accountRequest.add(new AttributeRequest("primaryGroupDN",GDN));
-
-         accountRequest.add(new AttributeRequest("mail",identityObject.getEmail()));
-
-     
-
-         accountRequest.setNativeIdentity(DN);
-
-         accountRequests.add(accountRequest);
-
-         plan.setAccountRequests(accountRequests);
-
-         plan.setIdentity(identityObject);
+        System.out.println("Beanshell namespace:");
 
 
-         System.out.println("givenName"+event.getObject().getFirstname());
 
-         System.out.println("DN:...." +DN);
+        for (int i=0; i&lt; this.variables.length; i++){
 
-         System.out.println("obj..............."+identityObject);
+        String name = this.variables[i];
 
-         System.out.println("View PLAN " + plan.toXml());
+        if ("transient".equals(name)) { continue; }
 
-         return plan;
+        Object value = eval(name);
+
+
+
+        if (value == void)
+
+        print("\n"+name + " = void");
+
+        else if (value == null)
+
+        print(name + " = null");
+
+        else
+
+        print ("\n"+name + ":" + value.getClass().getSimpleName() + " = " + value);
+
+        }
+
+
+
+        System.out.println("obj..............."+identityObject);
+
+        System.out.println("View PLAN " + plan);
+        if(null!=plan)print(plan.toXml());
+        return plan;
 
       </Source>
     </Script>
-    <Transition to="Initialize"/>
+    <Transition to="end"/>
   </Step>
   <Step icon="Task" name="Initialize" posX="266" posY="9">
-    <Arg name="formTemplate" value="Identity Update"/>
-    <Arg name="enableRetryRequest" value="ref:enableRetryRequest"/>
-    <Arg name="allowRequestsWithViolations" value="ref:allowRequestsWithViolations"/>
-    <Arg name="endOnManualWorkItems"/>
-    <Arg name="policiesToCheck" value="ref:policiesToCheck"/>
-    <Arg name="project"/>
-    <Arg name="workItemComments"/>
-    <Arg name="identityRequestId"/>
-    <Arg name="source" value="ref:source"/>
-    <Arg name="identityDisplayName" value="ref:identityDisplayName"/>
-    <Arg name="requireViolationReviewComments" value="ref:requireViolationReviewComments"/>
-    <Arg name="identityRequest"/>
-    <Arg name="trace" value="ref:trace"/>
-    <Arg name="endOnProvisioningForms"/>
     <Arg name="plan" value="ref:plan"/>
     <Arg name="flow" value="ref:flow"/>
     <Arg name="identityName" value="ref:identityName"/>
-    <Arg name="approvalSet"/>
-    <Arg name="policyViolations"/>
-    <Arg name="violationReviewDecision"/>
-    <Arg name="policyScheme" value="ref:policyScheme"/>
-    <Arg name="priority" value="ref:workItemPriority"/>
-    <Arg name="asyncCacheRefresh"/>
-    <Arg name="optimisticProvisioning" value="ref:optimisticProvisioning"/>
-    <Arg name="launcher" value="ref:launcher"/>
-    <Return name="project" to="project"/>
-    <Return name="approvalSet" to="approvalSet"/>
-    <Return name="policyViolations" to="policyViolations"/>
-    <Return name="identityRequestId" to="identityRequestId"/>
-    <Return name="violationReviewDecision" to="violationReviewDecision"/>
-    <Return merge="true" name="workItemComments" to="workItemComments"/>
     <WorkflowRef>
-      <Reference class="sailpoint.object.Workflow" name="Identity Request Initialize"/>
-    </WorkflowRef>
-    <Transition to="end">
-      <Script>
-        <Source>
-		<![CDATA[("cancel".equals(violationReviewDecision) || ((size(policyViolations) > 0 ) && (policyScheme.equals("fail"))))]]></Source>
-      </Script>
-    </Transition>
-    <Transition to="View Project"/>
-  </Step>
-  <Step name="View Project" posX="229" posY="131">
-    <Script>
-      <Source>
-
-        System.out.println("View project: " + project.toXml());
-
-      </Source>
-    </Script>
-    <Transition to="Provision"/>
-  </Step>
-  <Step icon="Task" name="Provision" posX="426" posY="141">
-    <Arg name="formTemplate" value="Identity Update"/>
-    <Arg name="approvalScheme"/>
-    <Arg name="identityName" value="ref:identityName"/>
-    <Arg name="fallbackApprover" value="ref:fallbackApprover"/>
-    <Arg name="approvalSet" value="ref:approvalSet"/>
-    <Arg name="manualActionsEmailTemplate" value="Pending Manual Change"/>
-    <Arg name="workItemComments" value="ref:workItemComments"/>
-    <Arg name="project" value="ref:project"/>
-    <Arg name="policyViolations" value="ref:policyViolations"/>
-    <Arg name="identityRequestId"/>
-    <Arg name="priority"/>
-    <Arg name="policyScheme" value="ref:policyScheme"/>
-    <Arg name="splitProvisioning"/>
-    <Arg name="foregroundProvisioning" value="ref:foregroundProvisioning"/>
-    <Arg name="identityDisplayName" value="ref:identityDisplayName"/>
-    <Arg name="trace" value="ref:trace"/>
-    <Arg name="recompile"/>
-    <Arg name="optimisticProvisioning" value="ref:optimisticProvisioning"/>
-    <Arg name="plan"/>
-    <Arg name="flow" value="ref:flow"/>
-    <Arg name="launcher" value="ref:launcher"/>
-    <Return name="project" to="project"/>
-    <WorkflowRef>
-      <Reference class="sailpoint.object.Workflow" name="Identity Request Provision"/>
-    </WorkflowRef>
-    <Transition to="Refresh" when="ref:doRefresh"/>
-  </Step>
-  <Step action="call:refreshIdentity" icon="Default" name="Refresh" posX="587" posY="138">
-    <Arg name="identityName" value="ref:identityName"/>
-    <Transition to="Finalize"/>
-  </Step>
-  <Step catches="complete" icon="Task" name="Finalize" posX="726" posY="137">
-    <Arg name="trace" value="ref:trace"/>
-    <Arg name="autoVerifyIdentityRequest"/>
-    <Arg name="approvalSet" value="ref:approvalSet"/>
-    <Arg name="ticketManagementApplication"/>
-    <Arg name="project" value="ref:project"/>
-    <Arg name="identityRequestId"/>
-    <Arg name="priority"/>
-    <Arg name="ticketDataGenerationRule"/>
-    <WorkflowRef>
-      <Reference class="sailpoint.object.Workflow" name="Identity Request Finalize"/>
-    </WorkflowRef>
-    <Transition to="Send Post Notifications"/>
-  </Step>
-  <Step icon="Task" name="Send Post Notifications" posX="884" posY="129">
-    <Arg name="approvalScheme"/>
-    <Arg name="identityName" value="ref:identityName"/>
-    <Arg name="notificationScheme" value="ref:notificationScheme"/>
-    <Arg name="userEmailTemplate" value="ref:userEmailTemplate"/>
-    <Arg name="approvalSet"/>
-    <Arg name="policyViolations"/>
-    <Arg name="project" value="ref:project"/>
-    <Arg name="source" value="ref:source"/>
-    <Arg name="priority"/>
-    <Arg name="identityDisplayName" value="ref:identityDisplayName"/>
-    <Arg name="trace" value="ref:trace"/>
-    <Arg name="requesterEmailTemplate" value="ref:requesterEmailTemplate"/>
-    <Arg name="securityOfficerName"/>
-    <Arg name="securityOfficerEmailTemplate"/>
-    <Arg name="plan"/>
-    <Arg name="flow"/>
-    <Arg name="managerEmailTemplate" value="ref:managerEmailTemplate"/>
-    <Arg name="launcher" value="ref:launcher"/>
-    <WorkflowRef>
-      <Reference class="sailpoint.object.Workflow" name="Identity Request Notify"/>
+      <Reference class="sailpoint.object.Workflow" id="" name="LCM Provisioning"/>
     </WorkflowRef>
     <Transition to="end"/>
   </Step>
