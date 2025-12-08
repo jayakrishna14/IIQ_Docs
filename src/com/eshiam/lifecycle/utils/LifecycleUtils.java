@@ -31,6 +31,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Date;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public final class LifecycleUtils {
 
@@ -124,6 +128,8 @@ public final class LifecycleUtils {
         log = tmp;
     }
     private static final Gson gson = new Gson();
+    private static final ConcurrentMap<String, Map<String, Object>> lastRunInfo = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<String, Map<String, Object>> requestResults = new ConcurrentHashMap<>();
 
     private LifecycleUtils() {
     }
@@ -270,6 +276,9 @@ public final class LifecycleUtils {
         if (payload.get("email") != null)
             input.setEmail(payload.get("email").toString());
 
+        if (payload.get("requestId") != null)
+            input.setRequestId(payload.get("requestId").toString());
+
         Object apps = payload.get("applications");
         if (apps instanceof List) {
             List<ApplicationAccess> appList = new ArrayList<>();
@@ -351,6 +360,22 @@ public final class LifecycleUtils {
         Map<String, Object> single = new HashMap<>();
         single.put("result", resultObj);
         return single;
+    }
+
+    public static Map<String, Object> getLastRunInfo(String eventType) {
+        if (eventType == null)
+            eventType = "JOINER";
+        return lastRunInfo.get(eventType.toUpperCase());
+    }
+
+    public static Map<String, Object> getResultForRequest(String requestId) {
+        if (requestId == null)
+            return null;
+        return requestResults.get(requestId);
+    }
+
+    public static java.util.Set<String> getAllRequestIds() {
+        return requestResults.keySet();
     }
 
     // ---------------------------------------------------------------------
@@ -481,6 +506,21 @@ public final class LifecycleUtils {
                 String workflow = workflowForEvent(eventType, joinerWorkflow, moverWorkflow, leaverWorkflow);
                 String requestId = generateUuid();
 
+                // Insert a pending entry so requestId lookups find something immediately
+                try {
+                    Map<String, Object> pending = new HashMap<>();
+                    pending.put("identityName", li.getIdentityName());
+                    pending.put("eventType", eventType);
+                    pending.put("status", "PENDING");
+                    pending.put("requestId", requestId);
+                    pending.put("rule", rule);
+                    pending.put("workflow", workflow);
+                    pending.put("timestamp", new Date().toString());
+                    requestResults.put(requestId, pending);
+                } catch (Throwable t) {
+                    // ignore
+                }
+
                 Map<String, Object> exec;
                 if (context == null) {
                     // In unit tests or contexts where a SailPointContext isn't available we don't
@@ -494,7 +534,9 @@ public final class LifecycleUtils {
                 } else {
                     exec = executeLifecyclePath(context, rule, workflow, li, eventType, initiator, requestId);
                 }
-                log.debug("executeLifecyclePath returned result type=" + (exec.get("result") != null ? exec.get("result").getClass().getName() : "null") + " value=" + exec.get("result"));
+                log.debug("executeLifecyclePath returned result type="
+                        + (exec.get("result") != null ? exec.get("result").getClass().getName() : "null") + " value="
+                        + exec.get("result"));
 
                 BatchResult br = new BatchResult();
                 br.setIdentityName(li.getIdentityName());
@@ -505,10 +547,28 @@ public final class LifecycleUtils {
                 br.setRequestId(requestId);
 
                 Object resultObj = exec.get("result");
-                log.debug("resultObj class=" + (resultObj != null ? resultObj.getClass().getName() : "null") + " value=" + resultObj);
+                log.debug("resultObj class=" + (resultObj != null ? resultObj.getClass().getName() : "null") + " value="
+                        + resultObj);
                 // Preserve original return type from rule: Map or simple String/primitive etc.
                 br.setResult(resultObj);
 
+                // Store last-run info and result per requestId
+                try {
+                    Map<String, Object> last = new HashMap<>();
+                    last.put("identityName", li.getIdentityName());
+                    last.put("eventType", eventType);
+                    last.put("status", br.getStatus() != null ? br.getStatus().toString() : "UNKNOWN");
+                    last.put("requestId", requestId);
+                    last.put("rule", rule);
+                    last.put("workflow", workflow);
+                    last.put("initiator", initiator);
+                    last.put("result", resultObj);
+                    last.put("timestamp", new Date().toString());
+                    lastRunInfo.put(eventType != null ? eventType.toUpperCase() : "JOINER", last);
+                    requestResults.put(requestId, last);
+                } catch (Throwable t) {
+                    // ignore
+                }
                 results.add(br);
 
             } catch (Exception e) {
@@ -536,7 +596,40 @@ public final class LifecycleUtils {
                 }.getType());
     }
 
-    public static void registerProviders(ResourceConfig rc) {
-        rc.register(com.eshiam.lifecycle.rest.LifecycleInputBodyReader.class);
+    public static Map<String, Object> executeRule(SailPointContext context, String ruleName,
+            Map<String, Object> args, String initiator, String requestId) throws GeneralException {
+        Map<String, Object> out = new HashMap<>();
+        if (context == null) {
+            out.put("status", "SIMULATED");
+            out.put("rule", ruleName);
+            out.put("requestId", requestId);
+            out.put("arguments", args);
+            out.put("message", "No SailPointContext available; simulation only");
+            return out;
+        }
+        if (ruleName == null || ruleName.trim().isEmpty()) {
+            out.put("status", "ERROR");
+            out.put("message", "ruleName cannot be null");
+            return out;
+        }
+        Rule rule = context.getObjectByName(Rule.class, ruleName);
+        if (rule == null) {
+            out.put("status", "NOT_FOUND");
+            out.put("message", "Rule not found: " + ruleName);
+            return out;
+        }
+
+        Map<String, Object> ruleArgs = args != null ? new HashMap<>(args) : new HashMap<>();
+        ruleArgs.put("requestId", requestId);
+        ruleArgs.put("initiator", initiator);
+        ruleArgs.put("taskName", ruleName);
+
+        Object result = context.runRule(rule, ruleArgs);
+        out.put("status", "SUCCESS");
+        out.put("rule", ruleName);
+        out.put("requestId", requestId);
+        out.put("result", result);
+        return out;
     }
+
 }

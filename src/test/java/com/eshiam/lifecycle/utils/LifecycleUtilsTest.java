@@ -109,4 +109,34 @@ public class LifecycleUtilsTest {
 
         assertNull(LifecycleUtils.normalizeResultToMap(null));
     }
+
+    @Test
+    public void testGetResultForRequestFromBatch() {
+        Map<String, Object> row1 = new HashMap<>();
+        row1.put("identityName", "jsmith");
+        row1.put("eventType", "JOINER");
+        row1.put("email", "john.smith@example.com");
+
+        java.util.List<Map<String, Object>> batch = new java.util.ArrayList<>();
+        batch.add(row1);
+        BatchResponse resp = LifecycleUtils.processBatch(batch, null, "jr", "jw", "mr", "mw", "lr", "lw", "testuser", "bid1");
+        assertNotNull(resp);
+        assertEquals(1, resp.getResults().size());
+        String rid = resp.getResults().get(0).getRequestId();
+        assertNotNull(rid);
+        Map<String, Object> rLookup = LifecycleUtils.getResultForRequest(rid);
+        assertNotNull(rLookup);
+        assertEquals(rid, rLookup.get("requestId"));
+    }
+
+    @Test
+    public void testExecuteRuleSimulation() throws Exception {
+        Map<String, Object> args = new HashMap<>();
+        args.put("k", "v");
+        Map<String, Object> out = LifecycleUtils.executeRule(null, "TestRule", args, "user", "rid1");
+        assertNotNull(out);
+        assertEquals("SIMULATED", out.get("status"));
+        assertEquals("TestRule", out.get("rule"));
+        assertEquals("rid1", out.get("requestId"));
+    }
 }
