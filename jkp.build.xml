@@ -23,7 +23,7 @@
       <mkdir dir="${pluginClasses}" />
 
       <javac srcdir="${pluginSrc}" destdir="${pluginClasses}"
-                 includeantruntime="false" target="11">
+                 includeantruntime="false" target="17">
 
           <classpath>
             <pathelement path="${iiq.home}/WEB-INF/classes"/>

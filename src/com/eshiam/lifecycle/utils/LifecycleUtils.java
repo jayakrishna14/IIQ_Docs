@@ -118,6 +118,10 @@ public final class LifecycleUtils {
                 @Override
                 public void warn(Object message, Throwable t) {
                 }
+                @Override
+                public boolean isWarnEnabled() {
+                    return false;
+                }
             };
         }
         log = tmp;
