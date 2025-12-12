@@ -104,11 +104,6 @@ public final class LifecycleUtils {
                 }
 
                 @Override
-                public boolean isWarnEnabled() {
-                    return false;
-                }
-
-                @Override
                 public void trace(Object message) {
                 }
 
@@ -185,16 +180,21 @@ public final class LifecycleUtils {
 
         String prefix = "### LCE EXECUTION [" + eventType + "] — ";
 
-        Rule rule = context.getObjectByName(Rule.class, ruleName);
-        if (rule == null) {
-            throw new LceExecutionException(ErrorCode.RULE_NOT_FOUND,
-                    "Rule not found: " + ruleName);
-        }
+        Rule rule = null;
+        Workflow wf = null;
 
-        Workflow wf = context.getObjectByName(Workflow.class, workflowName);
-        if (wf == null) {
-            throw new LceExecutionException(ErrorCode.WORKFLOW_NOT_FOUND,
-                    "Workflow not found: " + workflowName);
+        if (context != null) {
+            rule = context.getObjectByName(Rule.class, ruleName);
+            if (rule == null) {
+                throw new LceExecutionException(ErrorCode.RULE_NOT_FOUND,
+                        "Rule not found: " + ruleName);
+            }
+
+            wf = context.getObjectByName(Workflow.class, workflowName);
+            if (wf == null) {
+                throw new LceExecutionException(ErrorCode.WORKFLOW_NOT_FOUND,
+                        "Workflow not found: " + workflowName);
+            }
         }
 
         Map<String, Object> lceData = new HashMap<>();
@@ -205,16 +205,20 @@ public final class LifecycleUtils {
         lceData.put("email", input.getEmail());
 
         if (input.getApplications() != null) {
+            // Consolidate application access entries so multiple entries for the
+            // same application+operation are merged
+            List<ApplicationAccess> consolidated = consolidateApplications(input.getApplications());
             List<Map<String, Object>> apps = new ArrayList<>();
-            for (ApplicationAccess aa : input.getApplications()) {
+            for (ApplicationAccess aa : consolidated) {
                 Map<String, Object> appMap = new HashMap<>();
                 appMap.put("name", aa.getName());
-                appMap.put("operation", aa.getOperation());
+                if (aa.getOperation() != null)
+                    appMap.put("operation", aa.getOperation());
 
                 Map<String, Object> access = new HashMap<>();
                 if (aa.getAccess() != null) {
-                    access.put("add", aa.getAccess().getAdd());
-                    access.put("remove", aa.getAccess().getRemove());
+                    access.put("add", new ArrayList<>(aa.getAccess().getAdd()));
+                    access.put("remove", new ArrayList<>(aa.getAccess().getRemove()));
                 }
                 appMap.put("access", access);
 
@@ -230,7 +234,21 @@ public final class LifecycleUtils {
         args.put("initiator", initiator);
         args.put("requestId", requestId != null ? requestId : generateUuid());
 
-        Object result = context.runRule(rule, args);
+        Object result;
+        if (context == null) {
+            // Simulation mode
+            Map<String, Object> sim = new HashMap<>();
+            sim.put("result", "SIMULATED");
+            sim.put("workflow", workflowName);
+            sim.put("rule", ruleName);
+            sim.put("requestId", requestId);
+            sim.put("initiator", initiator);
+            result = sim;
+        } else {
+            result = context.runRule(rule, args);
+        }
+
+        Map<String, Object> normalized = normalizeResultToMap(result);
 
         Map<String, Object> response = new HashMap<>();
         response.put("eventType", eventType);
@@ -238,10 +256,77 @@ public final class LifecycleUtils {
         response.put("workflow", workflowName);
         response.put("requestId", requestId);
         response.put("initiator", initiator);
-        response.put("result", result);
+        response.put("result", normalized);
         response.put("status", "SUCCESS");
 
+        // Persist a lookup entry for the request so callers can poll /status
+        try {
+            Map<String, Object> last = new HashMap<>();
+            last.put("identityName", input.getIdentityName());
+            last.put("eventType", eventType);
+            last.put("status", "SUCCESS");
+            last.put("requestId", requestId);
+            last.put("rule", ruleName);
+            last.put("workflow", workflowName);
+            last.put("initiator", initiator);
+            last.put("result", normalized);
+            last.put("timestamp", new Date().toString());
+            lastRunInfo.put(eventType != null ? eventType.toUpperCase() : "JOINER", last);
+            requestResults.put(requestId, last);
+        } catch (Throwable t) {
+            // ignore persistence failures
+        }
+
         return response;
+    }
+
+    // ---------------------------------------------------------------------
+    // Consolidate list of ApplicationAccess entries
+    // - Merge entries that have the same application name AND the same operation
+    // - Add/Remove lists are unioned while preserving uniqueness
+    // ---------------------------------------------------------------------
+    private static List<ApplicationAccess> consolidateApplications(List<ApplicationAccess> apps) {
+        Map<String, ApplicationAccess> keyToApp = new HashMap<>();
+
+        for (ApplicationAccess aa : apps) {
+            String name = aa.getName() != null ? aa.getName() : "";
+            String op = aa.getOperation() != null ? aa.getOperation() : "";
+            String key = name + "::" + op;
+
+            ApplicationAccess existing = keyToApp.get(key);
+            if (existing == null) {
+                // Deep copy to avoid mutating caller's objects
+                ApplicationAccess copy = new ApplicationAccess();
+                copy.setName(name);
+                copy.setOperation(op);
+                Access acc = new Access();
+                if (aa.getAccess() != null) {
+                    acc.getAdd().addAll(aa.getAccess().getAdd());
+                    acc.getRemove().addAll(aa.getAccess().getRemove());
+                }
+                copy.setAccess(acc);
+                keyToApp.put(key, copy);
+            } else {
+                // merge add/remove lists
+                Access existingAcc = existing.getAccess();
+                if (existingAcc == null) {
+                    existingAcc = new Access();
+                    existing.setAccess(existingAcc);
+                }
+                if (aa.getAccess() != null) {
+                    for (String add : aa.getAccess().getAdd()) {
+                        if (!existingAcc.getAdd().contains(add))
+                            existingAcc.getAdd().add(add);
+                    }
+                    for (String rem : aa.getAccess().getRemove()) {
+                        if (!existingAcc.getRemove().contains(rem))
+                            existingAcc.getRemove().add(rem);
+                    }
+                }
+            }
+        }
+
+        return new ArrayList<>(keyToApp.values());
     }
 
     // ---------------------------------------------------------------------
@@ -313,7 +398,8 @@ public final class LifecycleUtils {
 
                 appList.add(aa);
             }
-            input.setApplications(appList);
+            // Consolidate similar entries so callers (and rules) see neat merged access lists
+            input.setApplications(consolidateApplications(appList));
         }
 
         return input;

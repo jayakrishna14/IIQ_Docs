@@ -57,8 +57,8 @@
              destfile="${pluginBuild}/dist/${pluginName}.${version}.zip" />
     </target>
 
-    <!-- Classpath for compilation -->
-    <path id="classpath.test">
+    <!-- Classpath for compilation (explicit) -->
+    <path id="project.classpath">
         <pathelement location="${pluginClasses}" />
         <pathelement path="${iiq.home}/WEB-INF/classes" />
         <fileset dir="${iiq.home}/WEB-INF/lib">
@@ -70,23 +70,19 @@
         </fileset>
     </path>
 
+    <!-- Backwards-compatible id (kept for other tasks) -->
+    <path id="classpath.test">
+        <path refid="project.classpath"/>
+    </path>
+
     <!-- Setup -->
     <target name="setup">
         <echo message="Compiling classes..." />
         <mkdir dir="${pluginClasses}" />
 
-        <javac srcdir="${pluginSrc}" destdir="${pluginClasses}" 
-               includeantruntime="false" target="11">
-            <classpath>
-                <pathelement path="${iiq.home}/WEB-INF/classes" />
-                <fileset dir="${iiq.home}/WEB-INF/lib">
-                    <include name="**/*.jar" />
-                </fileset>
-                <!-- compile-time only libraries -->
-                <fileset dir="${pluginBase}/lib">
-                    <include name="**/*.jar" />
-                </fileset>
-            </classpath>
+        <javac srcdir="${pluginSrc}" destdir="${pluginClasses}"
+               includeantruntime="false" target="17"
+               classpathref="project.classpath" fork="true" failonerror="true">
             <compilerarg value="-Xlint:deprecation" />
             <compilerarg value="-Xlint:unchecked" />
         </javac>
@@ -96,5 +92,14 @@
         <echo message="Cleaning target..." />
         <delete dir="${buildPlugins}" />
     </target>
-
+<javac srcdir="${pluginSrc}" destdir="${pluginClasses}"
+       includeantruntime="false" target="17"
+       classpathref="project.classpath" fork="true" failonerror="true">
+    <!-- Exclude typical test locations and test classes -->
+    <exclude name="**/test/**" />
+    <exclude name="**/src/test/**" />
+    <exclude name="**/*Test.java" />
+    <compilerarg value="-Xlint:deprecation" />
+    <compilerarg value="-Xlint:unchecked" />
+</javac>
 </project>
