@@ -11,6 +11,7 @@ public class LifecycleInput {
     private String lastName;
     private String department;
     private String email;
+    private String requestId;
     private List<ApplicationAccess> applications = new ArrayList<>();
 
     public LifecycleInput() {
@@ -71,5 +72,13 @@ public class LifecycleInput {
 
     public void setApplications(List<ApplicationAccess> applications) {
         this.applications = applications;
+    }
+
+    public void setRequestId(String string) {
+        this.requestId = string;
+    }
+
+    public String getRequestId() {
+        return this.requestId;
     }
 }

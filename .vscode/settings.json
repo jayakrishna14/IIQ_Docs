@@ -1,3 +1,15 @@
 {
+<<<<<<< HEAD
     "java.configuration.updateBuildConfiguration": "automatic"
+=======
+    "java.debug.settings.onBuildFailureProceed": true,
+    "java.configuration.runtimes": [
+        {
+            "name": "JavaSE-11",
+            "path": "C:\\Program Files\\Java\\jdk-11",
+            "default": true
+        }
+    ],
+    "java.jdt.ls.java.home": "C:\\Program Files\\Java\\jdk-11"
+>>>>>>> 775e0893f6745ab90a86d1dbdb78654f22e3066f
 }

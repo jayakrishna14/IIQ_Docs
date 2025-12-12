@@ -83,6 +83,12 @@
                             dataType="string"
                             defaultValue="LCE_Leaver_Workflow"
                             helpText="Workflow executed for Leaver events"/>
+                        <Setting
+                            name="statusRule"
+                            label="Status Rule Name"
+                            dataType="string"
+                            defaultValue="LCE_Status_Rule"
+                            helpText="Rule executed to get status of LCE request"/>
                     </List>
                 </value>
             </entry>
