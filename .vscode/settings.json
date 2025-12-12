@@ -1,7 +1,10 @@
 {
 <<<<<<< HEAD
+<<<<<<< HEAD
     "java.configuration.updateBuildConfiguration": "automatic"
 =======
+=======
+>>>>>>> 775e0893f6745ab90a86d1dbdb78654f22e3066f
     "java.debug.settings.onBuildFailureProceed": true,
     "java.configuration.runtimes": [
         {
@@ -11,5 +14,8 @@
         }
     ],
     "java.jdt.ls.java.home": "C:\\Program Files\\Java\\jdk-11"
+<<<<<<< HEAD
+>>>>>>> 775e0893f6745ab90a86d1dbdb78654f22e3066f
+=======
 >>>>>>> 775e0893f6745ab90a86d1dbdb78654f22e3066f
 }
