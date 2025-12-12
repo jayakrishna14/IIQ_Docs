@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.ArrayList;
 
 @Path("AutomationLCE")
-@Consumes({ MediaType.APPLICATION_JSON, MediaType.WILDCARD })
+@Consumes({MediaType.APPLICATION_JSON, MediaType.WILDCARD})
 @Produces(MediaType.APPLICATION_JSON)
 @AllowAll
 public class LifecycleResource extends BasePluginResource {
@@ -262,7 +262,9 @@ public class LifecycleResource extends BasePluginResource {
         if (rid instanceof List) {
             Map<String, Object> multi = new HashMap<>();
             for (Object idObj : (List<?>) rid) {
-                if (idObj == null) continue;
+                if (idObj == null) {
+                    continue;
+                }
                 String id = idObj.toString();
                 Map<String, Object> r = LifecycleUtils.getResultForRequest(id);
                 multi.put(id, r);
@@ -353,8 +355,9 @@ public class LifecycleResource extends BasePluginResource {
         }
 
         String ruleName = getSettingString("identityCreationRule");
-        if (ruleName == null || ruleName.trim().isEmpty())
+        if (ruleName == null || ruleName.trim().isEmpty()) {
             ruleName = "IdentityCreationRule";
+        }
 
         String requestId = Util.uuid();
         Map<String, Object> args = new HashMap<>(input);
@@ -370,12 +373,18 @@ public class LifecycleResource extends BasePluginResource {
             String status = out.getOrDefault("status", "UNKNOWN").toString();
             normalized.put("status", status.equals("SIMULATED") ? "SIMULATED" : "SUCCESS");
             // Prefer explicit fields returned by rule
-            if (out.get("identityName") != null) normalized.put("identityName", out.get("identityName"));
-            if (out.get("identityId") != null) normalized.put("identityId", out.get("identityId"));
+            if (out.get("identityName") != null) {
+                normalized.put("identityName", out.get("identityName"));
+            }
+            if (out.get("identityId") != null) {
+                normalized.put("identityId", out.get("identityId"));
+            }
             if (!normalized.containsKey("identityName")) {
                 // Try common args 'name' or 'identityName' passed in
                 Object name = input.getOrDefault("name", input.get("identityName"));
-                if (name != null) normalized.put("identityName", name.toString());
+                if (name != null) {
+                    normalized.put("identityName", name.toString());
+                }
             }
             if (!normalized.containsKey("identityId")) {
                 // If rule didn't return an id, synthesize one in simulation
@@ -384,7 +393,9 @@ public class LifecycleResource extends BasePluginResource {
                 } else if (out.get("result") instanceof Map) {
                     @SuppressWarnings("unchecked")
                     Map<String, Object> res = (Map<String, Object>) out.get("result");
-                    if (res.get("identityId") != null) normalized.put("identityId", res.get("identityId"));
+                    if (res.get("identityId") != null) {
+                        normalized.put("identityId", res.get("identityId"));
+                    }
                 }
             }
             normalized.put("requestId", requestId);
@@ -405,73 +416,64 @@ public class LifecycleResource extends BasePluginResource {
     // Tries to call a configured rule `getTriggersRule` or falls back to plugin settings
     // ------------------------------------------------------
     @GET
-    @Path("LCE/triggers")
+    @Path("getTriggers")
     public Response getLceTriggers() throws GeneralException {
-        String ruleName = getSettingString("getTriggersRule");
+
         String initiator = getLoggedInUser() != null ? getLoggedInUser().getName() : "system";
-        String requestId = Util.uuid();
+        Map row = new HashMap();
+        try {
+            if (getContext() != null) {
+                QueryOptions qo = new QueryOptions();
+                Iterator it = getContext.search(IdentityTrigger.class, qo, "name,type,disabled");
+               
+                while (it != null && it.hasNext()) {
+                    Object[] trig = it.next();
+                    row.put("name", trig[0]);
+                    row.put("type", trig[1]);
+                    row.put("disabled", trig[2]);
 
-        // If a dedicated rule is configured, prefer it
-        if (ruleName != null && !ruleName.trim().isEmpty()) {
-            Map<String, Object> args = new HashMap<>();
-            args.put("requestId", requestId);
-            args.put("initiator", initiator);
-            Map<String, Object> res = LifecycleUtils.executeRule(getContext(), ruleName, args, initiator, requestId);
-            return Response.ok(res).build();
+                    return Response.ok(row).build();
+                }
+            }
+
+        } catch (GeneralException ge) {
+            row.put("ERROR: " , ge.getMessage());
+            return Response.ok(row).build();
         }
-
         // Try to read EventTrigger objects via reflection if running inside IIQ
         if (getContext() != null) {
+            List results = new ArrayList();
+
             try {
-                Class<?> evtClass = Class.forName("sailpoint.object.EventTrigger");
-                java.lang.reflect.Method m = getContext().getClass().getMethod("getObjectsByType", Class.class);
-                @SuppressWarnings("unchecked")
-                java.util.List<Object> objs = (java.util.List<Object>) m.invoke(getContext(), evtClass);
-                List<String> joiner = new ArrayList<>();
-                List<String> mover = new ArrayList<>();
-                List<String> leaver = new ArrayList<>();
-                for (Object o : objs) {
-                    try {
-                        java.lang.reflect.Method getName = o.getClass().getMethod("getName");
-                        Object name = getName.invoke(o);
-                        String n = name != null ? name.toString() : null;
-                        // Try to detect type; common EventTrigger methods may include getEventType or getType
-                        String type = null;
-                        try {
-                            java.lang.reflect.Method mType = o.getClass().getMethod("getEventType");
-                            Object t = mType.invoke(o);
-                            type = t != null ? t.toString() : null;
-                        } catch (NoSuchMethodException ignored) {
-                        }
-                        if (type == null) {
-                            try {
-                                java.lang.reflect.Method mType2 = o.getClass().getMethod("getType");
-                                Object t2 = mType2.invoke(o);
-                                type = t2 != null ? t2.toString() : null;
-                            } catch (NoSuchMethodException ignored) {
-                            }
-                        }
-                        if (type != null && type.toUpperCase().contains("JOIN")) joiner.add(n);
-                        else if (type != null && type.toUpperCase().contains("MOVE")) mover.add(n);
-                        else if (type != null && type.toUpperCase().contains("LEAVE")) leaver.add(n);
-                        else {
-                            // best-effort: place by name heuristics
-                            if (n != null && n.toLowerCase().contains("hire")) joiner.add(n);
-                            else if (n != null && n.toLowerCase().contains("job") || (n != null && n.toLowerCase().contains("move"))) mover.add(n);
-                            else if (n != null && n.toLowerCase().contains("term")) leaver.add(n);
-                        }
-                    } catch (Throwable t) {
-                        // ignore single trigger parse errors
-                    }
+
+                // Build query options
+                QueryOptions qo = new QueryOptions();
+
+                // Perform search
+                Iterator it = context.search(IdentityTrigger.class, qo, "name,type,disabled");
+
+                while (it != null @and        {
+                    it.hasNext()
+                    
+                
                 }
-                Map<String, Object> out = new HashMap<>();
-                out.put("joinerTriggers", joiner);
-                out.put("moverTriggers", mover);
-                out.put("leaverTriggers", leaver);
-                return Response.ok(out).build();
-            } catch (Throwable t) {
-                // reflection failed — fall through to fallback
+                
+                    ) {
+
+      Object[] trig = it.next();
+
+                    Map row = new HashMap();
+                    row.put("name", trig[0]);
+                    row.put("type", trig[1]);
+                    row.put("disabled", trig[2]);
+
+                    results.add(row);
+                }
+
+            } catch (GeneralException ge) {
+                results.add("ERROR: " + ge.getMessage());
             }
+
         }
 
         // Fallback: attempt to read comma-separated plugin settings
@@ -484,10 +486,14 @@ public class LifecycleResource extends BasePluginResource {
 
     private List<String> parseCsvSetting(String s) {
         List<String> list = new ArrayList<>();
-        if (s == null) return list;
+        if (s == null) {
+            return list;
+        }
         for (String part : s.split(",")) {
             String t = part.trim();
-            if (!t.isEmpty()) list.add(t);
+            if (!t.isEmpty()) {
+                list.add(t);
+            }
         }
         return list;
     }
@@ -511,12 +517,18 @@ public class LifecycleResource extends BasePluginResource {
 
         boolean runRefresh = false;
         Object r = input.get("runIdentityRefresh");
-        if (r instanceof Boolean) runRefresh = (Boolean) r;
+        if (r instanceof Boolean) {
+            runRefresh = (Boolean) r;
+        }
 
         List<String> aggs = new ArrayList<>();
         Object a = input.get("runAggregation");
         if (a instanceof List) {
-            for (Object o : (List<?>) a) if (o != null) aggs.add(o.toString());
+            for (Object o : (List<?>) a) {
+                if (o != null) {
+                    aggs.add(o.toString());
+                }
+            }
         }
 
         Map<String, Object> details = new HashMap<>();
@@ -526,28 +538,38 @@ public class LifecycleResource extends BasePluginResource {
         try {
             if (runRefresh) {
                 String ruleName = getSettingString("identityRefreshRule");
-                if (ruleName == null || ruleName.trim().isEmpty()) ruleName = "IdentityRefreshRule";
+                if (ruleName == null || ruleName.trim().isEmpty()) {
+                    ruleName = "IdentityRefreshRule";
+                }
                 Map<String, Object> args = new HashMap<>();
                 args.put("requestId", requestId);
                 args.put("initiator", initiator);
                 Map<String, Object> res = LifecycleUtils.executeRule(getContext(), ruleName, args, initiator, requestId);
                 Object s = res.getOrDefault("status", res);
-                if (s != null && s.toString().equalsIgnoreCase("SUCCESS")) details.put("identityRefresh", "Completed");
-                else details.put("identityRefresh", s != null ? s : res);
+                if (s != null && s.toString().equalsIgnoreCase("SUCCESS")) {
+                    details.put("identityRefresh", "Completed");
+                } else {
+                    details.put("identityRefresh", s != null ? s : res);
+                }
             }
 
             Map<String, Object> aggrOut = new HashMap<>();
             for (String appName : aggs) {
                 String ruleName = getSettingString("aggregationRule");
-                if (ruleName == null || ruleName.trim().isEmpty()) ruleName = "AggregationRule";
+                if (ruleName == null || ruleName.trim().isEmpty()) {
+                    ruleName = "AggregationRule";
+                }
                 Map<String, Object> args = new HashMap<>();
                 args.put("application", appName);
                 args.put("requestId", requestId);
                 args.put("initiator", initiator);
                 Map<String, Object> res = LifecycleUtils.executeRule(getContext(), ruleName, args, initiator, requestId);
                 Object s = res.getOrDefault("status", res);
-                if (s != null && s.toString().equalsIgnoreCase("SUCCESS")) aggrOut.put(appName, "Completed");
-                else aggrOut.put(appName, s != null ? s : res);
+                if (s != null && s.toString().equalsIgnoreCase("SUCCESS")) {
+                    aggrOut.put(appName, "Completed");
+                } else {
+                    aggrOut.put(appName, s != null ? s : res);
+                }
             }
             details.put("aggregations", aggrOut);
 
@@ -626,11 +648,17 @@ public class LifecycleResource extends BasePluginResource {
         java.util.function.Function<Object, java.util.List<String>> extractList = (obj) -> {
             java.util.List<String> outList = new ArrayList<>();
             if (obj instanceof List) {
-                for (Object o : (List<?>) obj) if (o != null) outList.add(o.toString());
+                for (Object o : (List<?>) obj) {
+                    if (o != null) {
+                        outList.add(o.toString());
+                    }
+                }
             } else if (obj instanceof Map) {
                 // try to extract name fields
                 for (Object v : ((Map<?, ?>) obj).values()) {
-                    if (v instanceof String) outList.add(v.toString());
+                    if (v instanceof String) {
+                        outList.add(v.toString());
+                    }
                 }
             }
             return outList;
@@ -665,12 +693,15 @@ public class LifecycleResource extends BasePluginResource {
 
                     java.util.List<String> actualList = new ArrayList<>();
                     if (resultMap != null) {
-                        if (resultMap.get(key) != null) actualList = extractList.apply(resultMap.get(key));
-                        else if (resultMap.get("applications") instanceof List && key.equals("accounts")) {
+                        if (resultMap.get(key) != null) {
+                            actualList = extractList.apply(resultMap.get(key));
+                        } else if (resultMap.get("applications") instanceof List && key.equals("accounts")) {
                             for (Object appObj : (List<?>) resultMap.get("applications")) {
                                 if (appObj instanceof Map) {
                                     Object name = ((Map<?, ?>) appObj).get("name");
-                                    if (name != null) actualList.add(name.toString());
+                                    if (name != null) {
+                                        actualList.add(name.toString());
+                                    }
                                 }
                             }
                         }
@@ -680,16 +711,23 @@ public class LifecycleResource extends BasePluginResource {
                     kv.put("expected", expList);
                     kv.put("actual", actualList);
                     java.util.List<String> missing = new ArrayList<>();
-                    for (String e : expList) if (!actualList.contains(e)) missing.add(e);
-                    if (missing.isEmpty()) kv.put("status", "PASS");
-                    else {
+                    for (String e : expList) {
+                        if (!actualList.contains(e)) {
+                            missing.add(e);
+                        }
+                    }
+                    if (missing.isEmpty()) {
+                        kv.put("status", "PASS");
+                    } else {
                         kv.put("status", "FAIL");
                         kv.put("missing", missing);
                     }
                     validationResults.put(key, kv);
                     anyChecked = true;
                 }
-                if (anyChecked) usedActual = true;
+                if (anyChecked) {
+                    usedActual = true;
+                }
             }
         }
 
@@ -714,7 +752,10 @@ public class LifecycleResource extends BasePluginResource {
         for (Object v : validationResults.values()) {
             if (v instanceof Map) {
                 Object st = ((Map<?, ?>) v).get("status");
-                if (st != null && st.toString().equalsIgnoreCase("FAIL")) { overall = "FAIL"; break; }
+                if (st != null && st.toString().equalsIgnoreCase("FAIL")) {
+                    overall = "FAIL";
+                    break;
+                }
             }
         }
 
