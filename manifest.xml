@@ -27,6 +27,7 @@
                     <List>
                         <!-- Updated to your actual REST class -->
                         <String>com.eshiam.lifecycle.rest.LifecycleResource</String>
+                        <String>com.eshiam.lifecycle.rest.TestResource</String>
                     </List>
                 </value>
             </entry>
@@ -65,11 +66,11 @@
                             helpText="Rule executed for Leaver events"/>
 
                         <Setting
-                            name="joinerWorkflow"
-                            label="Joiner Workflow Name"
+                            name="identityCreationRule"
+                            label="identityCreationRule Name"
                             dataType="string"
-                            defaultValue="LCE_Joiner_Workflow"
-                            helpText="Workflow executed for Joiner events"/>
+                            defaultValue="identityCreationRule"
+                            helpText="identityCreationRule executed for Joidentity Creation"/>
                         <Setting
                             name="moverWorkflow"
                             label="Mover Workflow Name"

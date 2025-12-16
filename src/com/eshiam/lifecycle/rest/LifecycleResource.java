@@ -10,18 +10,18 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-import sailpoint.tools.Util;
+import sailpoint.object.Identity;
+import sailpoint.object.IdentityTrigger;
+import sailpoint.object.QueryOptions;
 import sailpoint.rest.plugin.BasePluginResource;
 import sailpoint.rest.plugin.AllowAll;
 import sailpoint.tools.GeneralException;
+import sailpoint.tools.Util;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.List;
-import java.util.ArrayList;
+import java.util.*;
 
 @Path("AutomationLCE")
-@Consumes({MediaType.APPLICATION_JSON, MediaType.WILDCARD})
+@Consumes({ MediaType.APPLICATION_JSON, MediaType.WILDCARD })
 @Produces(MediaType.APPLICATION_JSON)
 @AllowAll
 public class LifecycleResource extends BasePluginResource {
@@ -30,740 +30,325 @@ public class LifecycleResource extends BasePluginResource {
 
     @Override
     public String getPluginName() {
-        return "AutomationLCE";
+        log.error("getPluginName called");
+        String name = "AutomationLCE";
+        log.error("getPluginName returning: " + name);
+        return name;
     }
 
-    // -------------------------
-    // Generic LCE trigger (new)
-    // POST /AutomationLCE/LCE/trigger
-    // Accepts the JSON payload you supplied (eventType, identityName, applications[], ...)
-    // -------------------------
-    @POST
-    @Path("LCE/trigger")
-    public Response triggerLce(Map<String, Object> input) throws GeneralException {
-        log.info("### LCE trigger called");
-
-        if (input == null) {
-            Map<String, Object> err = new HashMap<>();
-            err.put("status", "ERROR");
-            err.put("message", "Empty request body");
-            return Response.status(Response.Status.BAD_REQUEST).entity(err).build();
-        }
-
-        // Map/validate
-        LifecycleInput lifecycleInput = LifecycleUtils.mapToLifecycleInput(input);
-        List<String> validationErrors = LifecycleUtils.validateLifecycleInput(lifecycleInput);
-        if (!validationErrors.isEmpty()) {
-            Map<String, Object> err = new HashMap<>();
-            err.put("status", "FAILED_VALIDATION");
-            err.put("errors", validationErrors);
-            return Response.status(Response.Status.BAD_REQUEST).entity(err).build();
-        }
-
-        // Determine which rule/workflow to use based on event type and plugin settings
-        String eventType = lifecycleInput.getEventType() != null ? lifecycleInput.getEventType() : "JOINER";
-        String joinerRule = getSettingString("joinerRule");
-        String moverRule = getSettingString("moverRule");
-        String leaverRule = getSettingString("leaverRule");
-
-        String joinerWorkflow = getSettingString("joinerWorkflow");
-        String moverWorkflow = getSettingString("moverWorkflow");
-        String leaverWorkflow = getSettingString("leaverWorkflow");
-
-        String ruleName = LifecycleUtils.ruleForEvent(eventType, joinerRule, moverRule, leaverRule);
-        String workflowName = LifecycleUtils.workflowForEvent(eventType, joinerWorkflow, moverWorkflow, leaverWorkflow);
-        String requestId = Util.uuid();
-
-        // Execute asynchronously so QA can receive an immediate TRIGGERED response
-        final LifecycleInput liCopy = lifecycleInput;
-        final String ruleFinal = ruleName;
-        final String wfFinal = workflowName;
-        final String initiator = getLoggedInUser() != null ? getLoggedInUser().getName() : "system";
-        final String reqIdFinal = requestId;
-
-        Thread t = new Thread(() -> {
-            try {
-                LifecycleUtils.executeLifecyclePath(getContext(), ruleFinal, wfFinal, liCopy, eventType, initiator, reqIdFinal);
-            } catch (Exception e) {
-                log.error("Async LCE execution failed for requestId=" + reqIdFinal, e);
-            }
-        }, "AutomationLCE-trigger-" + requestId);
-        t.setDaemon(true);
-        t.start();
-
-        Map<String, Object> resp = new HashMap<>();
-        resp.put("status", "TRIGGERED");
-        resp.put("requestId", requestId);
-        resp.put("message", eventType + " event started.");
-        return Response.ok(resp).build();
-    }
-
-    // ------------------------------------------------------
-    // JOINER SINGLE
-    // ------------------------------------------------------
-    @POST
-    @Path("joiner")
-    public Response runJoiner(Map<String, Object> input) throws GeneralException {
-        log.info("### JOINER triggered. input=" + input);
-
-        if (input == null) {
-            Map<String, Object> err = new HashMap<>();
-            err.put("status", "ERROR");
-            err.put("message", "Empty request body");
-            return Response.status(Response.Status.BAD_REQUEST).entity(err).build();
-        }
-
-        LifecycleInput lifecycleInput = LifecycleUtils.mapToLifecycleInput(input);
-        List<String> validationErrors = LifecycleUtils.validateLifecycleInput(lifecycleInput);
-        if (!validationErrors.isEmpty()) {
-            Map<String, Object> err = new HashMap<>();
-            err.put("status", "FAILED_VALIDATION");
-            err.put("errors", validationErrors);
-            return Response.status(Response.Status.BAD_REQUEST).entity(err).build();
-        }
-
-        String ruleName = getSettingString("joinerRule");
-        String workflowName = getSettingString("joinerWorkflow");
-        String requestId = Util.uuid();
-
-        Map<String, Object> result = LifecycleUtils.executeLifecyclePath(
-                getContext(), ruleName, workflowName, lifecycleInput, "JOINER",
-                getLoggedInUser() != null ? getLoggedInUser().getName() : "system", requestId);
-
-        return Response.ok(result).build();
-    }
-
-    // ------------------------------------------------------
-    // MOVER SINGLE
-    // ------------------------------------------------------
-    @POST
-    @Path("mover")
-    public Response runMover(Map<String, Object> input) throws GeneralException {
-
-        if (input == null) {
-            Map<String, Object> err = new HashMap<>();
-            err.put("status", "ERROR");
-            err.put("message", "Empty request body");
-            return Response.status(Response.Status.BAD_REQUEST).entity(err).build();
-        }
-
-        LifecycleInput lifecycleInput = LifecycleUtils.mapToLifecycleInput(input);
-        List<String> validationErrors = LifecycleUtils.validateLifecycleInput(lifecycleInput);
-        if (!validationErrors.isEmpty()) {
-            Map<String, Object> err = new HashMap<>();
-            err.put("status", "FAILED_VALIDATION");
-            err.put("errors", validationErrors);
-            return Response.status(Response.Status.BAD_REQUEST).entity(err).build();
-        }
-
-        String ruleName = getSettingString("moverRule");
-        String workflowName = getSettingString("moverWorkflow");
-        String requestId = Util.uuid();
-
-        Map<String, Object> result = LifecycleUtils.executeLifecyclePath(
-                getContext(), ruleName, workflowName, lifecycleInput,
-                "MOVER", getLoggedInUser() != null ? getLoggedInUser().getName() : "system", requestId);
-
-        return Response.ok(result).build();
-    }
-
-    // ------------------------------------------------------
-    // LEAVER SINGLE
-    // ------------------------------------------------------
-    @POST
-    @Path("leaver")
-    public Response runLeaver(Map<String, Object> input) throws GeneralException {
-
-        if (input == null) {
-            Map<String, Object> err = new HashMap<>();
-            err.put("status", "ERROR");
-            err.put("message", "Empty request body");
-            return Response.status(Response.Status.BAD_REQUEST).entity(err).build();
-        }
-
-        LifecycleInput lifecycleInput = LifecycleUtils.mapToLifecycleInput(input);
-        List<String> validationErrors = LifecycleUtils.validateLifecycleInput(lifecycleInput);
-        if (!validationErrors.isEmpty()) {
-            Map<String, Object> err = new HashMap<>();
-            err.put("status", "FAILED_VALIDATION");
-            err.put("errors", validationErrors);
-            return Response.status(Response.Status.BAD_REQUEST).entity(err).build();
-        }
-
-        String ruleName = getSettingString("leaverRule");
-        String workflowName = getSettingString("leaverWorkflow");
-        String requestId = Util.uuid();
-
-        Map<String, Object> result = LifecycleUtils.executeLifecyclePath(
-                getContext(), ruleName, workflowName, lifecycleInput,
-                "LEAVER", getLoggedInUser() != null ? getLoggedInUser().getName() : "system", requestId);
-
-        return Response.ok(result).build();
-    }
-
-    // ------------------------------------------------------
-    // LCE BATCH
-    // ------------------------------------------------------
-    @POST
-    @Path("LCE/batch")
-    public Response runLceBatch(Map<String, Object> inputPayload) throws GeneralException {
-
-        log.info("### LCE batch triggered");
-
-        if (inputPayload == null) {
-            Map<String, Object> err = new HashMap<>();
-            err.put("status", "ERROR");
-            err.put("message", "Empty request body");
-            return Response.status(Response.Status.BAD_REQUEST).entity(err).build();
-        }
-
-        Object batchObj = inputPayload.get("identities");
-        if (!(batchObj instanceof List)) {
-            Map<String, Object> err = new HashMap<>();
-            err.put("status", "ERROR");
-            err.put("message", "Missing 'identities' array");
-            return Response.status(Response.Status.BAD_REQUEST).entity(err).build();
-        }
-
-        // *** FIXED LINE ***
-        List<?> batch = (List<?>) batchObj;
-
-        String batchRequestId = Util.uuid();
-        com.eshiam.lifecycle.model.BatchResponse resp = LifecycleUtils.processBatch(
-                batch, getContext(),
-                getSettingString("joinerRule"), getSettingString("joinerWorkflow"),
-                getSettingString("moverRule"), getSettingString("moverWorkflow"),
-                getSettingString("leaverRule"), getSettingString("leaverWorkflow"),
-                getLoggedInUser() != null ? getLoggedInUser().getName() : "system", batchRequestId);
-
-        return Response.ok(resp).build();
-    }
-
-    // ------------------------------------------------------
-    // GET STATUS OF A REQUEST by requestId
-    // ------------------------------------------------------
-    @POST
-    @Path("status")
-    public Response getStatus(Map<String, Object> input) throws GeneralException {
-        if (input == null) {
-            Map<String, Object> err = new HashMap<>();
-            err.put("status", "ERROR");
-            err.put("message", "Empty request body");
-            return Response.status(Response.Status.BAD_REQUEST).entity(err).build();
-        }
-        Object rid = input.get("requestId");
-        if (rid == null) {
-            Map<String, Object> err = new HashMap<>();
-            err.put("status", "ERROR");
-            err.put("message", "Missing 'requestId' in request body");
-            return Response.status(Response.Status.BAD_REQUEST).entity(err).build();
-        }
-        // Support either a single requestId (string) or a list of requestIds
-        if (rid instanceof List) {
-            Map<String, Object> multi = new HashMap<>();
-            for (Object idObj : (List<?>) rid) {
-                if (idObj == null) {
-                    continue;
-                }
-                String id = idObj.toString();
-                Map<String, Object> r = LifecycleUtils.getResultForRequest(id);
-                multi.put(id, r);
-            }
-            return Response.ok(multi).build();
-        } else {
-            String requestId = rid.toString();
-            Map<String, Object> r = LifecycleUtils.getResultForRequest(requestId);
-            if (r == null) {
-                Map<String, Object> err = new HashMap<>();
-                err.put("status", "NOT_FOUND");
-                err.put("message", "No request found for requestId " + requestId);
-                return Response.status(Response.Status.NOT_FOUND).entity(err).build();
-            }
-            return Response.ok(r).build();
-        }
-    }
-
-    // ------------------------------------------------------
-    // Execute a rule for a given request - prefer rules over TaskManager
-    // Request body: { requestId, taskName, taskArgs }
-    // ------------------------------------------------------
-    @POST
-    @Path("task/runRule")
-    public Response runRuleForRequest(Map<String, Object> input) throws GeneralException {
-        if (input == null) {
-            Map<String, Object> err = new HashMap<>();
-            err.put("status", "ERROR");
-            err.put("message", "Empty request body");
-            return Response.status(Response.Status.BAD_REQUEST).entity(err).build();
-        }
-        Object rid = input.get("requestId");
-        Object taskNameObj = input.get("taskName");
-        Object taskArgsObj = input.get("taskArgs");
-
-        if (rid == null || taskNameObj == null) {
-            Map<String, Object> err = new HashMap<>();
-            err.put("status", "ERROR");
-            err.put("message", "Missing 'requestId' or 'taskName' in request body");
-            return Response.status(Response.Status.BAD_REQUEST).entity(err).build();
-        }
-        String requestId = rid.toString();
-        String taskName = taskNameObj.toString();
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> taskArgs = null;
-        if (taskArgsObj instanceof Map) {
-            taskArgs = (Map<String, Object>) taskArgsObj;
-        } else if (taskArgsObj instanceof List) {
-            taskArgs = new HashMap<>();
-            taskArgs.put("taskArgs", taskArgsObj);
-        } else {
-            taskArgs = new HashMap<>();
-        }
-
-        // Add requestId into args for the rule
-        taskArgs.put("requestId", requestId);
-        taskArgs.put("initiator", getLoggedInUser() != null ? getLoggedInUser().getName() : "system");
-
-        Map<String, Object> result;
-        try {
-            result = LifecycleUtils.executeRule(getContext(), taskName, taskArgs, getLoggedInUser() != null ? getLoggedInUser().getName() : "system", requestId);
-        } catch (Exception e) {
-            log.error("executeRule failed", e);
-            Map<String, Object> err = new HashMap<>();
-            err.put("status", "FAILED");
-            err.put("message", e.getMessage());
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(err).build();
-        }
-        return Response.ok(result).build();
-    }
-
-    // ------------------------------------------------------
-    // TEST: Create Test Identity
-    // POST /AutomationLCE/test/identity/create
-    // Calls configured identity creation rule (setting: identityCreationRule)
-    // ------------------------------------------------------
+    // --------------------
+    // 1. CREATE TEST IDENTITY
+    // --------------------
     @POST
     @Path("test/identity/create")
-    public Response createTestIdentity(Map<String, Object> input) throws GeneralException {
-        log.info("### createTestIdentity called");
-
+    public Response createTestIdentity(Map<String, Object> input) {
+        log.error("createTestIdentity called with input: " + input);
         if (input == null) {
-            Map<String, Object> err = new HashMap<>();
-            err.put("status", "ERROR");
-            err.put("message", "Empty request body");
-            return Response.status(Response.Status.BAD_REQUEST).entity(err).build();
+            log.error("Input is null");
+            return bad("Empty request body");
         }
 
         String ruleName = getSettingString("identityCreationRule");
-        if (ruleName == null || ruleName.trim().isEmpty()) {
+        log.error("identityCreationRule setting: " + ruleName);
+        if (Util.isNullOrEmpty(ruleName)) {
+            log.error("identityCreationRule is empty, using default");
             ruleName = "IdentityCreationRule";
         }
 
         String requestId = Util.uuid();
-        Map<String, Object> args = new HashMap<>(input);
-        args.put("requestId", requestId);
-        args.put("initiator", getLoggedInUser() != null ? getLoggedInUser().getName() : "system");
+        log.error("Generated requestId: " + requestId);
+
+        LifecycleInput li = LifecycleUtils.mapToLifecycleInput(input);
+        log.error("Mapped LifecycleInput: " + li);
 
         try {
-            Map<String, Object> out = LifecycleUtils.executeRule(getContext(), ruleName, args,
-                    getLoggedInUser() != null ? getLoggedInUser().getName() : "system", requestId);
+            log.error("Executing LifecycleUtils.executeLifecyclePath for CREATE");
+            Map<String, Object> out = LifecycleUtils.executeLifecyclePath(
+                    getContext(),
+                    ruleName,
+                    getSettingString("identityCreationWorkflow"),
+                    li,
+                    "CREATE",
+                    getInitiator(),
+                    requestId
+            );
+            log.error("Lifecycle execution output: " + out);
 
-            // Normalize response for QA: ensure identityName and identityId are present
-            Map<String, Object> normalized = new HashMap<>();
-            String status = out.getOrDefault("status", "UNKNOWN").toString();
-            normalized.put("status", status.equals("SIMULATED") ? "SIMULATED" : "SUCCESS");
-            // Prefer explicit fields returned by rule
-            if (out.get("identityName") != null) {
-                normalized.put("identityName", out.get("identityName"));
-            }
-            if (out.get("identityId") != null) {
-                normalized.put("identityId", out.get("identityId"));
-            }
-            if (!normalized.containsKey("identityName")) {
-                // Try common args 'name' or 'identityName' passed in
-                Object name = input.getOrDefault("name", input.get("identityName"));
-                if (name != null) {
-                    normalized.put("identityName", name.toString());
-                }
-            }
-            if (!normalized.containsKey("identityId")) {
-                // If rule didn't return an id, synthesize one in simulation
-                if ("SIMULATED".equals(normalized.get("status"))) {
-                    normalized.put("identityId", LifecycleUtils.generateUuid());
-                } else if (out.get("result") instanceof Map) {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> res = (Map<String, Object>) out.get("result");
-                    if (res.get("identityId") != null) {
-                        normalized.put("identityId", res.get("identityId"));
-                    }
-                }
-            }
-            normalized.put("requestId", requestId);
-            return Response.ok(normalized).build();
+            return Response.ok(map(
+                    "status", "SUCCESS",
+                    "identityName", out.get("identityName"),
+                    "identityId", out.get("identityId"),
+                    "requestId", requestId
+            )).build();
+
         } catch (Exception e) {
-            log.error("createTestIdentity failed", e);
-            Map<String, Object> err = new HashMap<>();
-            err.put("status", "FAILED");
-            err.put("message", e.getMessage());
-            err.put("requestId", requestId);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(err).build();
+            log.error("Identity creation failed", e);
+            return error("FAILED", e.getMessage());
         }
     }
 
-    // ------------------------------------------------------
-    // GET LCE triggers
-    // GET /AutomationLCE/LCE/triggers
-    // Tries to call a configured rule `getTriggersRule` or falls back to plugin settings
-    // ------------------------------------------------------
+    // --------------------
+    // 2. GET LCE TRIGGERS
+    // --------------------
     @GET
-    @Path("getTriggers")
+    @Path("LCE/triggers")
     public Response getLceTriggers() throws GeneralException {
+        log.error("getLceTriggers called");
 
-        String initiator = getLoggedInUser() != null ? getLoggedInUser().getName() : "system";
-        Map row = new HashMap();
-        try {
-            if (getContext() != null) {
-                QueryOptions qo = new QueryOptions();
-                Iterator it = getContext.search(IdentityTrigger.class, qo, "name,type,disabled");
-               
-                while (it != null && it.hasNext()) {
-                    Object[] trig = it.next();
-                    row.put("name", trig[0]);
-                    row.put("type", trig[1]);
-                    row.put("disabled", trig[2]);
+        QueryOptions qo = new QueryOptions();
+        log.error("Created QueryOptions: " + qo);
 
-                    return Response.ok(row).build();
-                }
-            }
+        Iterator<Object[]> it = getContext().search(IdentityTrigger.class, qo, "name,type,disabled");
+        log.error("Search executed, iterator: " + it);
 
-        } catch (GeneralException ge) {
-            row.put("ERROR: " , ge.getMessage());
-            return Response.ok(row).build();
-        }
-        // Try to read EventTrigger objects via reflection if running inside IIQ
-        if (getContext() != null) {
-            List results = new ArrayList();
-
-            try {
-
-                // Build query options
-                QueryOptions qo = new QueryOptions();
-
-                // Perform search
-                Iterator it = context.search(IdentityTrigger.class, qo, "name,type,disabled");
-
-                while (it != null @and        {
-                    it.hasNext()
-                    
-                
-                }
-                
-                    ) {
-
-      Object[] trig = it.next();
-
-                    Map row = new HashMap();
-                    row.put("name", trig[0]);
-                    row.put("type", trig[1]);
-                    row.put("disabled", trig[2]);
-
-                    results.add(row);
-                }
-
-            } catch (GeneralException ge) {
-                results.add("ERROR: " + ge.getMessage());
-            }
-
-        }
-
-        // Fallback: attempt to read comma-separated plugin settings
         Map<String, Object> out = new HashMap<>();
-        out.put("joinerTriggers", parseCsvSetting(getSettingString("joinerTriggers")));
-        out.put("moverTriggers", parseCsvSetting(getSettingString("moverTriggers")));
-        out.put("leaverTriggers", parseCsvSetting(getSettingString("leaverTriggers")));
+        int i = 1;
+
+        if (it == null) {
+            log.error("Iterator is null - no triggers found");
+        } else if (!it.hasNext()) {
+            log.error("Iterator has no elements - empty result");
+        } else {
+            while (it.hasNext()) {
+                Object[] row = it.next();
+                log.error("Iterator row: " + Arrays.toString(row));
+
+                String name = row[0] != null ? row[0].toString() : "null";
+                String type = row[1] != null ? row[1].toString() : "null";
+                String disabled = row[2] != null ? row[2].toString() : "null";
+                log.error("Trigger details - name: " + name + ", type: " + type + ", disabled: " + disabled);
+
+                out.put("" + i++, ". name : " + name + "; type : " + type + ", disabled : " + disabled);
+            }
+        }
+
+        log.error("getLceTriggers returning: " + out);
         return Response.ok(out).build();
     }
 
-    private List<String> parseCsvSetting(String s) {
-        List<String> list = new ArrayList<>();
-        if (s == null) {
-            return list;
-        }
-        for (String part : s.split(",")) {
-            String t = part.trim();
-            if (!t.isEmpty()) {
-                list.add(t);
+    // --------------------
+    // 3. TRIGGER LCE
+    // --------------------
+    @POST
+    @Path("LCE/trigger")
+    public Response triggerLce(Map<String, Object> input) {
+        log.error("triggerLce called with input: " + input);
+        if (input == null) return bad("Empty request body");
+
+        LifecycleInput li = LifecycleUtils.mapToLifecycleInput(input);
+        log.error("Mapped LifecycleInput: " + li);
+
+        List<String> errors = LifecycleUtils.validateLifecycleInput(li);
+        log.error("Validation errors: " + errors);
+        if (!errors.isEmpty()) return Response.status(Response.Status.BAD_REQUEST)
+                .entity(map("errors", errors)).build();
+
+        String eventType = li.getEventType();
+        String triggerName = input.getOrDefault("triggerName", eventType).toString();
+        String ruleName = getSettingString(eventType.toLowerCase() + "Rule");
+        String workflowName = getSettingString(eventType.toLowerCase() + "Workflow");
+        String requestId = Util.uuid();
+
+        log.error("Trigger details - eventType: " + eventType + ", triggerName: " + triggerName +
+                ", ruleName: " + ruleName + ", workflowName: " + workflowName + ", requestId: " + requestId);
+
+        new Thread(() -> {
+            try {
+                log.error("Executing lifecycle path asynchronously");
+                LifecycleUtils.executeLifecyclePath(
+                        getContext(),
+                        ruleName,
+                        workflowName,
+                        li,
+                        triggerName,
+                        getInitiator(),
+                        requestId
+                );
+            } catch (Exception e) {
+                log.error("Lifecycle execution failed", e);
             }
-        }
-        return list;
+        }).start();
+
+        return Response.ok(map(
+                "status", "TRIGGERED",
+                "requestId", requestId,
+                "message", eventType + " event started"
+        )).build();
     }
 
-    // ------------------------------------------------------
-    // Run tasks (identity refresh / aggregations)
-    // POST /AutomationLCE/tasks/run
-    // Body: { runIdentityRefresh: true, runAggregation: ["App1","AD"], timeoutSeconds: 90 }
-    // ------------------------------------------------------
+    // --------------------
+    // 4. RUN TASKS
+    // --------------------
     @POST
     @Path("tasks/run")
-    public Response runTasks(Map<String, Object> input) throws GeneralException {
-        log.info("### tasks/run called input=" + input);
+    public Response runTasks(Map<String, Object> input) {
+        log.error("runTasks called with input: " + input);
+        if (input == null) return bad("Empty request body");
 
-        if (input == null) {
-            Map<String, Object> err = new HashMap<>();
-            err.put("status", "ERROR");
-            err.put("message", "Empty request body");
-            return Response.status(Response.Status.BAD_REQUEST).entity(err).build();
-        }
+        boolean runRefresh = Boolean.TRUE.equals(input.get("runIdentityRefresh"));
+        log.error("runIdentityRefresh: " + runRefresh);
 
-        boolean runRefresh = false;
-        Object r = input.get("runIdentityRefresh");
-        if (r instanceof Boolean) {
-            runRefresh = (Boolean) r;
-        }
-
+        Object aggObj = input.get("runAggregation");
         List<String> aggs = new ArrayList<>();
-        Object a = input.get("runAggregation");
-        if (a instanceof List) {
-            for (Object o : (List<?>) a) {
-                if (o != null) {
-                    aggs.add(o.toString());
-                }
-            }
+        if (aggObj instanceof List) {
+            for (Object o : (List<?>) aggObj) aggs.add(o.toString());
         }
+        log.error("Aggregations to run: " + aggs);
 
-        Map<String, Object> details = new HashMap<>();
-        String initiator = getLoggedInUser() != null ? getLoggedInUser().getName() : "system";
         String requestId = Util.uuid();
+        log.error("Generated requestId: " + requestId);
+        Map<String, Object> details = new HashMap<>();
 
         try {
             if (runRefresh) {
-                String ruleName = getSettingString("identityRefreshRule");
-                if (ruleName == null || ruleName.trim().isEmpty()) {
-                    ruleName = "IdentityRefreshRule";
-                }
-                Map<String, Object> args = new HashMap<>();
-                args.put("requestId", requestId);
-                args.put("initiator", initiator);
-                Map<String, Object> res = LifecycleUtils.executeRule(getContext(), ruleName, args, initiator, requestId);
-                Object s = res.getOrDefault("status", res);
-                if (s != null && s.toString().equalsIgnoreCase("SUCCESS")) {
-                    details.put("identityRefresh", "Completed");
-                } else {
-                    details.put("identityRefresh", s != null ? s : res);
-                }
+                log.error("Running identity refresh task");
+                LifecycleUtils.executeLifecyclePath(
+                        getContext(),
+                        getSettingString("identityRefreshRule"),
+                        getSettingString("identityRefreshWorkflow"),
+                        LifecycleUtils.mapToLifecycleInput(args(requestId)),
+                        "REFRESH",
+                        getInitiator(),
+                        requestId
+                );
+                details.put("identityRefresh", "Completed");
+                log.error("Identity refresh completed");
             }
 
-            Map<String, Object> aggrOut = new HashMap<>();
-            for (String appName : aggs) {
-                String ruleName = getSettingString("aggregationRule");
-                if (ruleName == null || ruleName.trim().isEmpty()) {
-                    ruleName = "AggregationRule";
-                }
-                Map<String, Object> args = new HashMap<>();
-                args.put("application", appName);
-                args.put("requestId", requestId);
-                args.put("initiator", initiator);
-                Map<String, Object> res = LifecycleUtils.executeRule(getContext(), ruleName, args, initiator, requestId);
-                Object s = res.getOrDefault("status", res);
-                if (s != null && s.toString().equalsIgnoreCase("SUCCESS")) {
-                    aggrOut.put(appName, "Completed");
-                } else {
-                    aggrOut.put(appName, s != null ? s : res);
-                }
+            Map<String, Object> aggr = new HashMap<>();
+            for (String app : aggs) {
+                log.error("Running aggregation for application: " + app);
+                LifecycleUtils.executeLifecyclePath(
+                        getContext(),
+                        getSettingString("aggregationRule"),
+                        getSettingString("aggregationWorkflow"),
+                        LifecycleUtils.mapToLifecycleInput(args(requestId, "application", app)),
+                        "AGGREGATION",
+                        getInitiator(),
+                        requestId
+                );
+                aggr.put(app, "Completed");
+                log.error("Aggregation completed for application: " + app);
             }
-            details.put("aggregations", aggrOut);
+            details.put("aggregations", aggr);
 
-            Map<String, Object> ok = new HashMap<>();
-            ok.put("status", "DONE");
-            ok.put("details", details);
-            return Response.ok(ok).build();
+            log.error("runTasks completed, returning details: " + details);
+            return Response.ok(map("status", "DONE", "details", details)).build();
 
         } catch (Exception e) {
-            log.error("tasks/run failed", e);
-            Map<String, Object> err = new HashMap<>();
-            err.put("status", "FAILED");
-            err.put("message", e.getMessage());
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(err).build();
+            log.error("Task execution failed", e);
+            return error("FAILED", e.getMessage());
         }
     }
 
-    // ------------------------------------------------------
-    // Validate LCE outputs
-    // POST /AutomationLCE/LCE/validate
-    // Body: { identityName, eventType, expected: { accounts:[], entitlements:[], roleAssignments:[] }, requestId }
-    // ------------------------------------------------------
+    // --------------------
+    // 5. VALIDATE OUTPUT
+    // --------------------
     @POST
     @Path("LCE/validate")
-    public Response validateLce(Map<String, Object> input) throws GeneralException {
-        log.info("### LCE validate called input=" + input);
+    public Response validate(Map<String, Object> input) {
+        log.error("validate called with input: " + input);
+        String identityName = (String) input.get("identityName");
+        String requestId = (String) input.get("requestId");
+        log.error("identityName: " + identityName + ", requestId: " + requestId);
 
-        if (input == null) {
-            Map<String, Object> err = new HashMap<>();
-            err.put("status", "ERROR");
-            err.put("message", "Empty request body");
-            return Response.status(Response.Status.BAD_REQUEST).entity(err).build();
+        Identity id = null;
+        try {
+            id = getContext().getObjectByName(Identity.class, identityName);
+            log.error("Identity lookup result: " + id);
+            if (id == null) return bad("Identity not found");
+        } catch (Exception ex) {
+            log.error("Identity lookup failed", ex);
+            return bad("Identity lookup failed");
         }
 
-        Object identityNameObj = input.get("identityName");
-        if (identityNameObj == null) {
-            Map<String, Object> err = new HashMap<>();
-            err.put("status", "ERROR");
-            err.put("message", "Missing identityName");
-            return Response.status(Response.Status.BAD_REQUEST).entity(err).build();
+        Map<String, Object> actual = LifecycleUtils.getResultForRequest(requestId);
+        log.error("Actual results for requestId: " + actual);
+        if (actual == null) return bad("No execution results found");
+
+        Map<String, Object> expected = safeCastMap(input.get("expected"));
+        log.error("Expected results: " + expected);
+        Map<String, Object> results = new HashMap<>();
+        boolean pass = true;
+
+        for (String key : expected.keySet()) {
+            List<?> exp = safeCastList(expected.get(key));
+            List<?> act = safeCastList(actual.get(key));
+            List<Object> missing = new ArrayList<>();
+            if (exp != null && act != null) {
+                for (Object e : exp) if (!act.contains(e)) missing.add(e);
+            }
+
+            Map<String, Object> row = new HashMap<>();
+            row.put("expected", exp);
+            row.put("actual", act);
+            row.put("status", missing.isEmpty() ? "PASS" : "FAIL");
+            if (!missing.isEmpty()) row.put("missing", missing);
+
+            if (!missing.isEmpty()) pass = false;
+            results.put(key, row);
+
+            log.error("Validation result for key " + key + ": " + row);
         }
 
-        String identityName = identityNameObj.toString();
-        String requestId = input.get("requestId") != null ? input.get("requestId").toString() : Util.uuid();
-        String initiator = getLoggedInUser() != null ? getLoggedInUser().getName() : "system";
-
-        // If a rule is configured, delegate validation to it
-        String ruleName = getSettingString("validationRule");
-        if (ruleName != null && !ruleName.trim().isEmpty()) {
-            Map<String, Object> args = new HashMap<>();
-            args.put("identityName", identityName);
-            args.put("expected", input.get("expected"));
-            args.put("requestId", requestId);
-            args.put("initiator", initiator);
-            try {
-                Map<String, Object> out = LifecycleUtils.executeRule(getContext(), ruleName, args, initiator, requestId);
-                return Response.ok(out).build();
-            } catch (Exception e) {
-                log.error("validation rule failed", e);
-                Map<String, Object> err = new HashMap<>();
-                err.put("status", "FAILED");
-                err.put("message", e.getMessage());
-                return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(err).build();
-            }
-        }
-
-        // Fallback: try to perform a best-effort validation using recent request results
-        Map<String, Object> resp = new HashMap<>();
-        resp.put("identityName", identityName);
-        resp.put("eventType", input.get("eventType"));
-
-        Map<String, Object> validationResults = new HashMap<>();
-        Object expected = input.get("expected");
-
-        // Helper to extract lists from rule/workflow results
-        java.util.function.Function<Object, java.util.List<String>> extractList = (obj) -> {
-            java.util.List<String> outList = new ArrayList<>();
-            if (obj instanceof List) {
-                for (Object o : (List<?>) obj) {
-                    if (o != null) {
-                        outList.add(o.toString());
-                    }
-                }
-            } else if (obj instanceof Map) {
-                // try to extract name fields
-                for (Object v : ((Map<?, ?>) obj).values()) {
-                    if (v instanceof String) {
-                        outList.add(v.toString());
-                    }
-                }
-            }
-            return outList;
-        };
-
-        Map<String, Object> actualFromRequest = null;
-        if (input.get("requestId") != null) {
-            String lookupId = input.get("requestId").toString();
-            Map<String, Object> r = LifecycleUtils.getResultForRequest(lookupId);
-            if (r != null) {
-                actualFromRequest = r;
-            }
-        }
-
-        boolean usedActual = false;
-        if (actualFromRequest != null) {
-            Object resultObj = actualFromRequest.get("result");
-            Map<String, Object> resultMap = null;
-            if (resultObj instanceof Map) {
-                @SuppressWarnings("unchecked")
-                Map<String, Object> tmp = (Map<String, Object>) resultObj;
-                resultMap = tmp;
-            }
-
-            if (expected instanceof Map) {
-                @SuppressWarnings("unchecked")
-                Map<String, Object> exp = (Map<String, Object>) expected;
-                boolean anyChecked = false;
-                for (String key : new String[]{"accounts", "entitlements", "roleAssignments"}) {
-                    Object expVal = exp.get(key);
-                    java.util.List<String> expList = extractList.apply(expVal);
-
-                    java.util.List<String> actualList = new ArrayList<>();
-                    if (resultMap != null) {
-                        if (resultMap.get(key) != null) {
-                            actualList = extractList.apply(resultMap.get(key));
-                        } else if (resultMap.get("applications") instanceof List && key.equals("accounts")) {
-                            for (Object appObj : (List<?>) resultMap.get("applications")) {
-                                if (appObj instanceof Map) {
-                                    Object name = ((Map<?, ?>) appObj).get("name");
-                                    if (name != null) {
-                                        actualList.add(name.toString());
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    Map<String, Object> kv = new HashMap<>();
-                    kv.put("expected", expList);
-                    kv.put("actual", actualList);
-                    java.util.List<String> missing = new ArrayList<>();
-                    for (String e : expList) {
-                        if (!actualList.contains(e)) {
-                            missing.add(e);
-                        }
-                    }
-                    if (missing.isEmpty()) {
-                        kv.put("status", "PASS");
-                    } else {
-                        kv.put("status", "FAIL");
-                        kv.put("missing", missing);
-                    }
-                    validationResults.put(key, kv);
-                    anyChecked = true;
-                }
-                if (anyChecked) {
-                    usedActual = true;
-                }
-            }
-        }
-
-        if (!usedActual) {
-            // fallback: echo expected as actual (simulation)
-            if (expected instanceof Map) {
-                @SuppressWarnings("unchecked")
-                Map<String, Object> exp = (Map<String, Object>) expected;
-                for (String key : new String[]{"accounts", "entitlements", "roleAssignments"}) {
-                    Object expVal = exp.get(key);
-                    Map<String, Object> kv = new HashMap<>();
-                    kv.put("expected", expVal != null ? expVal : new ArrayList<>());
-                    kv.put("actual", expVal != null ? expVal : new ArrayList<>());
-                    kv.put("status", "PASS");
-                    validationResults.put(key, kv);
-                }
-            }
-        }
-
-        // overall status
-        String overall = "PASS";
-        for (Object v : validationResults.values()) {
-            if (v instanceof Map) {
-                Object st = ((Map<?, ?>) v).get("status");
-                if (st != null && st.toString().equalsIgnoreCase("FAIL")) {
-                    overall = "FAIL";
-                    break;
-                }
-            }
-        }
-
-        resp.put("validationResults", validationResults);
-        resp.put("overallStatus", overall);
-        resp.put("requestId", requestId);
-        resp.put("status", "SUCCESS");
-        return Response.ok(resp).build();
+        log.error("Validation overallStatus: " + (pass ? "PASS" : "FAIL"));
+        return Response.ok(map(
+                "identityName", identityName,
+                "eventType", input.get("eventType"),
+                "validationResults", results,
+                "overallStatus", pass ? "PASS" : "FAIL",
+                "requestId", requestId
+        )).build();
     }
 
+    // --------------------
+    // HELPERS
+    // --------------------
+    private String getInitiator() {
+        try {
+            String user = getLoggedInUser() != null ? getLoggedInUser().getName() : "system";
+            log.error("getInitiator returned: " + user);
+            return user;
+        } catch (GeneralException e) {
+            log.error("Failed to get initiator, defaulting to system", e);
+            return "system";
+        }
+    }
+
+    private Map<String, Object> args(String requestId, Object... kv) {
+        Map<String, Object> m = new HashMap<>();
+        m.put("requestId", requestId);
+        m.put("initiator", getInitiator());
+        for (int i = 0; i < kv.length; i += 2) m.put(kv[i].toString(), kv[i + 1]);
+        log.error("args map created: " + m);
+        return m;
+    }
+
+    private Response bad(String msg) {
+        log.error("Bad request: " + msg);
+        return Response.status(Response.Status.BAD_REQUEST)
+                .entity(map("status", "ERROR", "message", msg)).build();
+    }
+
+    private Response error(String status, String msg) {
+        log.error("Error response: status=" + status + ", message=" + msg);
+        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                .entity(map("status", status, "message", msg)).build();
+    }
+
+    private Map<String, Object> map(Object... kv) {
+        Map<String, Object> m = new HashMap<>();
+        for (int i = 0; i < kv.length; i += 2) m.put(kv[i].toString(), kv[i + 1]);
+        return m;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> safeCastMap(Object obj) {
+        return obj instanceof Map ? (Map<String, Object>) obj : Collections.emptyMap();
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Object> safeCastList(Object obj) {
+        return obj instanceof List ? (List<Object>) obj : Collections.emptyList();
+    }
 }

@@ -1,212 +1,130 @@
-<?xml version='1.0' encoding='UTF-8'?>
+<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE sailpoint PUBLIC "sailpoint.dtd" "sailpoint.dtd">
 <sailpoint>
+
+  <!-- LCE Joiner Rule -->
   <Rule language="beanshell" name="LCE_Joiner_Rule">
-    <Description>
-      No identities are selected by this IdentitySelector rule
-    </Description>
+    <Description>No identities are selected by this IdentitySelector rule</Description>
     <Signature returnType="boolean">
       <Inputs>
         <Argument name="context">
-          <Description>
-            A sailpoint.api.SailPointContext.
-          </Description>
+          <Description>A sailpoint.api.SailPointContext.</Description>
         </Argument>
         <Argument name="identity">
-          <Description>
-            The identity to evaluate
-          </Description>
+          <Description>The identity to evaluate</Description>
         </Argument>
       </Inputs>
     </Signature>
     <Source><![CDATA[
-    System.out.println("Beanshell namespace:");
+import sailpoint.object.*;
+import sailpoint.api.*;
+import sailpoint.workflow.*;
+import java.util.*;
+import org.apache.log4j.Logger;
+import org.apache.log4j.Level;
 
- 
+Logger logger = Logger.getLogger("LCE.Joiner.Rule");
+logger.setLevel(Level.INFO);
 
-for (int i=0; < this.variables.length; i++){
+// LCE Input fields
+String identityName  = null;
+String firstName     = null;
+String lastName      = null;
+String email         = null;
+String department    = null;
+List applicationList = null;
 
-   String name = this.variables[i];
+// Workflow / Request objects
+Workflow workflowObject      = null;
+Identity requesterIdentity   = null;
+String requesterId           = initiator;
+long workflowLaunchTime      = 0L;
+String workflowCaseName      = null;
+Attributes workflowArgs      = new Attributes();
+Attributes workflowInputArgs = null;
+Request workflowRequest      = null;
+RequestDefinition requestDef = null;
 
-if ("transient".equals(name)) { continue; }
-
-   Object value = eval(name);
-
- 
-
-   if (value == void)
-
-       print(name + " = void");
-
-   else if (value == null)
-
-       print(name + " = null");
-
-    else
-
-       print (name + ":" + value.getClass().getSimpleName() + " = " + value);
-
-}
-
- 
-  /****************************************************
- * IMPORTS & LOGGER
- ****************************************************/
-  import sailpoint.object.*;
-  import sailpoint.object.ProvisioningPlan;
-  import sailpoint.object.ProvisioningPlan.AccountRequest;
-  import sailpoint.object.ProvisioningPlan.AttributeRequest;
-  import sailpoint.api.*;
-  import sailpoint.workflow.*;
-  import java.util.*;
-  import org.apache.log4j.Logger;
-  import org.apache.log4j.Level;
-
-  Logger logger = Logger.getLogger("LCE.Joiner.Rule");
-  logger.setLevel(Level.INFO);
-
-
-  /****************************************************
- * GLOBAL VARIABLE DECLARATIONS (industry standard)
- ****************************************************/
-
-  // LCE Input fields
-  String identityName  = null;
-  String firstName     = null;
-  String lastName      = null;
-  String email         = null;
-  String department    = null;
-
-  // Application list
-  List applicationList = null;
-
-  // Workflow / Request objects
-  Workflow workflowObject      = null;
-  Identity requesterIdentity   = null;
-  String requesterId           = initiator;
-
-  long workflowLaunchTime      = 0L;
-  String workflowCaseName      = null;
-  Attributes workflowArgs      =   new Attributes();
-  Attributes workflowInputArgs = null;
-
-  Request workflowRequest      = null;
-  RequestDefinition requestDef = null;
-
-
-  /****************************************************
- * APPLICATION DETAIL LOGGER (clean and safe)
- ****************************************************/
-  public void logApplications(Logger logger, Map lceInput) {
-
+// Utility: Log application details
+public void logApplications(Logger logger, Map lceInput) {
     if (lceInput == null) {
-      logger.error("lceInput is null.");
-      return;
+        logger.error("lceInput is null.");
+        return;
     }
-
     Object appsObj = lceInput.get("applications");
-
     if (!(appsObj instanceof List)) {
-      logger.error("applications is missing or not a List.");
-      return;
+        logger.error("applications is missing or not a List.");
+        return;
     }
-
     List apps = (List) appsObj;
     logger.info("Applications Count: " + apps.size());
-
     for (int i = 0; i < apps.size(); i++) {
-
-      Object appObj = apps.get(i);
-      if (!(appObj instanceof Map)) {
-        logger.warn("Skipping application index " + i + " (not a Map).");
-        continue;
-      }
-
-      Map app = (Map) appObj;
-
-      String appName   = (String) app.get("name");
-      String operation = (String) app.get("operation");
-      Map access       = (Map) app.get("access");
-
-      logger.info("Application #" + i + ": " + appName + " | Operation=" + operation);
-
-      if (access == null) {
-        logger.info("  Access: none");
-        continue;
-      }
-
-      List addAccess    = (List) access.get("add");
-      List removeAccess = (List) access.get("remove");
-
-      logger.info("  Add Access    : " + (addAccess != null ? addAccess : "[]"));
-      logger.info("  Remove Access : " + (removeAccess != null ? removeAccess : "[]"));
+        Object appObj = apps.get(i);
+        if (!(appObj instanceof Map)) {
+            logger.warn("Skipping application index " + i + " (not a Map).");
+            continue;
+        }
+        Map app = (Map) appObj;
+        String appName   = (String) app.get("name");
+        String operation = (String) app.get("operation");
+        Map access       = (Map) app.get("access");
+        logger.info("Application #" + i + ": " + appName + " | Operation=" + operation);
+        if (access == null) {
+            logger.info("  Access: none");
+            continue;
+        }
+        List addAccess    = (List) access.get("add");
+        List removeAccess = (List) access.get("remove");
+        logger.info("  Add Access    : " + (addAccess != null ? addAccess : "[]"));
+        logger.info("  Remove Access : " + (removeAccess != null ? removeAccess : "[]"));
     }
-  }
-/****************************************************
- * BUILD DYNAMIC PROVISIONING PLAN
- ****************************************************/
-public ProvisioningPlan buildProvisioningPlan(Logger logger, List appList, Identity identity) {
+}
 
+// Build provisioning plan
+public ProvisioningPlan buildProvisioningPlan(Logger logger, List appList, Identity identity) {
     ProvisioningPlan plan = new ProvisioningPlan();
     plan.setIdentity(identity);
-
     if (appList == null || appList.isEmpty()) {
         logger.info("No dynamic applications found for provisioning.");
         return plan;
     }
-
     logger.info("Building provisioning plan for " + appList.size() + " applications.");
-
     for (int i = 0; i < appList.size(); i++) {
-
         Object appObj = appList.get(i);
         if (!(appObj instanceof Map)) {
             logger.warn("Skipping invalid application entry at index " + i);
             continue;
         }
-
         Map appMap = (Map) appObj;
-
         String appName   = (String) appMap.get("name");
         String operation = (String) appMap.get("operation");
-
         if (appName == null || operation == null) {
             logger.warn("Skipping app with missing name/operation at index " + i);
             continue;
         }
-
         logger.info("Building account request for: " + appName + " | Operation = " + operation);
-
         AccountRequest accReq = new AccountRequest();
         accReq.setApplication(appName);
-
-        // Map LCE terminology → SailPoint terminology
         if ("Create".equalsIgnoreCase(operation)) {
             accReq.setOperation(AccountRequest.Operation.Create);
         } else if ("Modify".equalsIgnoreCase(operation)) {
             accReq.setOperation(AccountRequest.Operation.Modify);
-        }   else if ("Disable".equalsIgnoreCase(operation)) {
-        accReq.setOperation(AccountRequest.Operation.Disable);
-      } else if ("Delete".equalsIgnoreCase(operation)) {
+        } else if ("Disable".equalsIgnoreCase(operation)) {
+            accReq.setOperation(AccountRequest.Operation.Disable);
+        } else if ("Delete".equalsIgnoreCase(operation)) {
             accReq.setOperation(AccountRequest.Operation.Delete);
         } else {
             logger.warn("Unknown operation for " + appName + ": " + operation);
             continue;
         }
-
-        // Process entitlements
         Map accessMap = (Map) appMap.get("access");
         if (accessMap != null) {
-
             List addList    = (List) accessMap.get("add");
             List removeList = (List) accessMap.get("remove");
-
-            // Add entitlements
             if (addList != null) {
                 for (int a = 0; a < addList.size(); a++) {
                     String ent = (String) addList.get(a);
                     logger.info("   ADD entitlement: " + ent);
-
                     AttributeRequest attrReq = new AttributeRequest(
                         "entitlement",
                         ProvisioningPlan.Operation.Add,
@@ -215,13 +133,10 @@ public ProvisioningPlan buildProvisioningPlan(Logger logger, List appList, Ident
                     accReq.add(attrReq);
                 }
             }
-
-            // Remove entitlements
             if (removeList != null) {
                 for (int r = 0; r < removeList.size(); r++) {
                     String ent = (String) removeList.get(r);
                     logger.info("   REMOVE entitlement: " + ent);
-
                     AttributeRequest attrReq = new AttributeRequest(
                         "entitlement",
                         ProvisioningPlan.Operation.Remove,
@@ -231,152 +146,108 @@ public ProvisioningPlan buildProvisioningPlan(Logger logger, List appList, Ident
                 }
             }
         }
-
-        // Add the account request to the provisioning plan
         plan.add(accReq);
     }
-
     return plan;
 }
 
+// Read LCE input
+identityName  = (String) lceInput.get("identityName");
+firstName     = (String) lceInput.get("firstName");
+lastName      = (String) lceInput.get("lastName");
+email         = (String) lceInput.get("email");
+department    = (String) lceInput.get("department");
+applicationList = (List) lceInput.get("applications");
 
-  /****************************************************
- * READ LCE INPUT FIELDS
- ****************************************************/
-  identityName  = (String) lceInput.get("identityName");
-  firstName     = (String) lceInput.get("firstName");
-  lastName      = (String) lceInput.get("lastName");
-  email         = (String) lceInput.get("email");
-  department    = (String) lceInput.get("department");
-  applicationList = (List) lceInput.get("applications");
+logger.info("Processing Joiner for identity: " + identityName);
 
-  logger.info("Processing Joiner for identity: " + identityName);
-
-  // Log full application details
-  logApplications(logger, lceInput);
-  ProvisioningPlan provPlan = buildProvisioningPlan(logger, applicationList, context.getObjectByName(Identity.class, identityName));
-
+// Log application details and build plan
+logApplications(logger, lceInput);
+ProvisioningPlan provPlan = buildProvisioningPlan(logger, applicationList, context.getObjectByName(Identity.class, identityName));
 logger.info("ProvisioningPlan built with " + provPlan.getAccountRequests().size() + " account requests.");
 
+// Workflow lookup
+workflowObject = context.getObject(Workflow.class, lceWorkflow);
+if (workflowObject == null)
+    throw new GeneralException("Workflow not found: " + lceWorkflow);
 
-  /****************************************************
- * WORKFLOW LOOKUP
- ****************************************************/
-  workflowObject = context.getObject(Workflow.class, lceWorkflow);
-  if (workflowObject == null)
-  throw new GeneralException("Workflow not found: " + lceWorkflow);
+requesterIdentity = context.getObjectByName(Identity.class, requesterId);
+if (requesterIdentity == null)
+    requesterIdentity = context.getObjectByName(Identity.class, "spadmin");
 
-  requesterIdentity = context.getObjectByName(Identity.class, requesterId);
-  if (requesterIdentity == null)
-  requesterIdentity = context.getObjectByName(Identity.class, "spadmin");
+// Build workflow request
+workflowLaunchTime = System.currentTimeMillis() + 5000;
+workflowCaseName = "Run '" + lceWorkflow + "' for " + identityName;
+logger.info("Launching workflow: " + workflowCaseName);
 
+workflowArgs = new Attributes();
+workflowArgs.put("plan", provPlan);
+workflowArgs.put("optimisticProvisioning", true);
+workflowArgs.put("approvalScheme", "none");
+workflowArgs.put("trace", false);
+workflowArgs.put("notificationScheme", "none");
+workflowArgs.put(StandardWorkflowHandler.ARG_REQUEST_DEFINITION, sailpoint.request.WorkflowRequestExecutor.DEFINITION_NAME);
+workflowArgs.put(StandardWorkflowHandler.ARG_WORKFLOW, lceWorkflow);
+workflowArgs.put(StandardWorkflowHandler.ARG_REQUEST_NAME, workflowCaseName);
+workflowArgs.put("requestName", workflowCaseName);
+workflowArgs.put("identityName", identityName);
+workflowArgs.put("requestId", requestId);
+workflowArgs.put("flow", eventType);
+workflowArgs.put("launcher", initiator);
+workflowArgs.put("lceData", lceData);
 
-  /****************************************************
- * BUILD WORKFLOW REQUEST
- ****************************************************/
-  workflowLaunchTime = System.currentTimeMillis() + 5000;
+workflowRequest = new Request();
+requestDef = context.getObject(RequestDefinition.class, "Workflow Request");
+workflowRequest.setDefinition(requestDef);
+workflowRequest.setOwner(requesterIdentity);
+workflowRequest.setEventDate(new Date(workflowLaunchTime));
+workflowRequest.setName(workflowCaseName);
+workflowRequest.setAttributes(requestDef, workflowArgs);
 
-  workflowCaseName = "Run '" + lceWorkflow + "' for " + identityName;
-  logger.info("Launching workflow: " + workflowCaseName);
+RequestManager.addRequest(context, workflowRequest);
 
-  workflowArgs = new Attributes();
-  workflowArgs.put("plan", provPlan);
-  workflowArgs.put("optimisticProvisioning", true);
-  workflowArgs.put("approvalScheme", "none");
-  workflowArgs.put("trace", false);
-  workflowArgs.put("notificationScheme", "none");
-  workflowArgs.put(StandardWorkflowHandler.ARG_REQUEST_DEFINITION, sailpoint.request.WorkflowRequestExecutor.DEFINITION_NAME);
-  workflowArgs.put(StandardWorkflowHandler.ARG_WORKFLOW, lceWorkflow);
-  workflowArgs.put(StandardWorkflowHandler.ARG_REQUEST_NAME, workflowCaseName);
-  workflowArgs.put("requestName", workflowCaseName);
-  workflowArgs.put("identityName", identityName);
-  workflowArgs.put("requestName", workflowCaseName);
-  workflowArgs.put("requestId", requestId);
-  workflowArgs.put("flow", eventType);
-  workflowArgs.put("launcher", initiator);
-  workflowArgs.put("lceData", lceData);
+logger.info("Workflow request scheduled successfully.");
 
-
-  /****************************************************
- * SCHEDULE REQUEST
- ****************************************************/
-  workflowRequest = new Request();
-  requestDef = context.getObject(RequestDefinition.class, "Workflow Request");
-
-  workflowRequest.setDefinition(requestDef);
-  workflowRequest.setOwner(requesterIdentity);
-  workflowRequest.setEventDate(new Date(workflowLaunchTime));
-  workflowRequest.setName(workflowCaseName);
-  workflowRequest.setAttributes(requestDef, workflowArgs);
-
-  RequestManager.addRequest(context, workflowRequest);
-
-  logger.info("Workflow request scheduled successfully.");
-
-  return true;
-]]>
-  </Source>
+return true;
+    ]]></Source>
   </Rule>
 
+  <!-- LCE Mover Rule -->
   <Rule language="beanshell" name="LCE_Mover_Rule">
-    <Description>
-      No identities are selected by this IdentitySelector rule
-    </Description>
+    <Description>No identities are selected by this IdentitySelector rule</Description>
     <Signature returnType="boolean">
       <Inputs>
-        <Argument name="context">
-          <Description>
-            A sailpoint.api.SailPointContext.
-          </Description>
-        </Argument>
-        <Argument name="identity">
-          <Description>
-            The identity to evaluate
-          </Description>
-        </Argument>
+        <Argument name="context"><Description>A sailpoint.api.SailPointContext.</Description></Argument>
+        <Argument name="identity"><Description>The identity to evaluate</Description></Argument>
       </Inputs>
     </Signature>
-    <Source>
-
-    log.error("===lceData===="+lceInput);//HashMap
-    log.error("===lceWorkflow===="+lceWorkflow);
-    log.error("===eventType===="+eventType);
-    log.error("===initiator===="+initiator);
-    log.error("===requestId===="+requestId);
-
-    return "Good";
-
-    </Source>
+    <Source><![CDATA[
+log.error("===lceData===="+lceInput);
+log.error("===lceWorkflow===="+lceWorkflow);
+log.error("===eventType===="+eventType);
+log.error("===initiator===="+initiator);
+log.error("===requestId===="+requestId);
+return true;
+    ]]></Source>
   </Rule>
 
+  <!-- LCE Leaver Rule -->
   <Rule language="beanshell" name="LCE_Leaver_Rule">
-    <Description>
-      No identities are selected by this IdentitySelector rule
-    </Description>
+    <Description>No identities are selected by this IdentitySelector rule</Description>
     <Signature returnType="boolean">
       <Inputs>
-        <Argument name="context">
-          <Description>
-            A sailpoint.api.SailPointContext.
-          </Description>
-        </Argument>
-        <Argument name="identity">
-          <Description>
-            The identity to evaluate
-          </Description>
-        </Argument>
+        <Argument name="context"><Description>A sailpoint.api.SailPointContext.</Description></Argument>
+        <Argument name="identity"><Description>The identity to evaluate</Description></Argument>
       </Inputs>
     </Signature>
-    <Source>
-
-    log.error("===lceData===="+lceInput);//HashMap
-    log.error("===lceWorkflow===="+lceWorkflow);
-    log.error("===eventType===="+eventType);
-    log.error("===initiator===="+initiator);
-    log.error("===requestId===="+requestId);
-
-    return "Good";
-
-    </Source>
+    <Source><![CDATA[
+log.error("===lceData===="+lceInput);
+log.error("===lceWorkflow===="+lceWorkflow);
+log.error("===eventType===="+eventType);
+log.error("===initiator===="+initiator);
+log.error("===requestId===="+requestId);
+return true;
+    ]]></Source>
   </Rule>
+
 </sailpoint>

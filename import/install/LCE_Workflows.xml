@@ -1,8 +1,7 @@
-<?xml version='1.0' encoding='UTF-8'?>
+<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE sailpoint PUBLIC "sailpoint.dtd" "sailpoint.dtd">
 <sailpoint>
 
-<!DOCTYPE Workflow PUBLIC "sailpoint.dtd" "sailpoint.dtd">
 <Workflow explicitTransitions="true" libraries="Identity" name="LCE_Joiner_Workflow" type="IdentityLifecycle">
   <Variable name="plan"/>
   <Variable name="flow"/>
@@ -79,8 +78,6 @@
   </Step>
   <Step icon="Stop" name="end" posX="948" posY="15"/>
 </Workflow>
-
-
 
 
 <Workflow explicitTransitions="true" libraries="Identity" name="LCE_Mover_Workflow" type="IdentityLifecycle">
@@ -160,8 +157,6 @@
   <Step icon="Stop" name="end" posX="948" posY="15"/>
 </Workflow>
 
-
-
 <Workflow explicitTransitions="true" libraries="Identity" name="LCE_Leaver_Workflow" type="IdentityLifecycle">
 <Variable name="plan"/>
   <Variable name="flow"/>
@@ -238,6 +233,5 @@
   </Step>
   <Step icon="Stop" name="end" posX="948" posY="15"/>
 </Workflow>
-
 
 </sailpoint>
